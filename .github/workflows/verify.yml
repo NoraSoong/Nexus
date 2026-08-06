@@ -48,6 +48,10 @@ jobs:
         working-directory: adapters/mcp
         run: npm ci
 
+      - name: Audit production dependencies
+        working-directory: adapters/mcp
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Build helper
         working-directory: adapters/mcp
         run: npm run build
