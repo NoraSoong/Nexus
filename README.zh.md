@@ -165,6 +165,7 @@ codex mcp add nexus-worktree \
 - [架构说明](docs/architecture.zh.md)
 - [开发指南](docs/development.zh.md)
 - [参与贡献](CONTRIBUTING.md)
+- [安全策略](SECURITY.md)
 - [助手规则示例](docs/agent-rules.zh.md)
 
 ## License

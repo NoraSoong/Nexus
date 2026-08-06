@@ -1,0 +1,29 @@
+name: Product feedback
+description: Share a workflow problem or a focused improvement idea.
+title: "feedback: "
+labels: [feedback]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Nexus is pre-alpha. Describe the development workflow that feels costly or unclear,
+        without including private requirements, code, credentials, or customer data.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Focus on the developer or assistant workflow, not a proposed implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: What do you do today?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: What would a better outcome look like?
+    validations:
+      required: true

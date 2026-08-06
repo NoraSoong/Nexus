@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a reproducible problem with Nexus.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve Nexus. Please remove API keys, private file paths,
+        materials, commit content, and other sensitive information before submitting.
+  - type: input
+    id: version
+    attributes:
+      label: Nexus version or commit
+      placeholder: "main @ abc1234"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. ...\n2. ...\n3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include sanitized logs or screenshots only when useful.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Mac app
+        - Context preparation
+        - Git or workspace binding
+        - MCP helper
+        - Documentation
+        - Other
+    validations:
+      required: true

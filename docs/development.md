@@ -116,6 +116,10 @@ The stdio regression checks that:
 
 The regression sets `NEXUS_MCP_ALLOW_HEADLESS=1` because it runs without the Mac app. Product MCP clients must not set this variable; without it, the helper only returns context while the Nexus Mac app heartbeat is fresh and assistant access is enabled.
 
+GitHub Actions runs the same Swift formatting, build, test, helper build, and MCP
+contract checks for changes to `main` and pull requests. Keep local verification aligned
+with that workflow rather than adding one-off checks only in CI.
+
 ## Product Guardrails
 
 - Nexus provides context; it does not replace the conversation between user and assistant.

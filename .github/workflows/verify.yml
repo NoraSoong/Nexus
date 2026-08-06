@@ -1,0 +1,61 @@
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  swift:
+    name: Swift
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check formatting
+        run: swift format lint --recursive Sources Tests
+
+      - name: Build
+        run: |
+          CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-cache" \
+            swift build --scratch-path "$PWD/.build/swiftpm"
+
+      - name: Test
+        run: |
+          CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-module-cache" \
+          SWIFTPM_MODULECACHE_OVERRIDE="$PWD/.build/swift-module-cache" \
+            swift test --scratch-path "$PWD/.build/swiftpm"
+
+  mcp:
+    name: MCP Helper
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: adapters/mcp/package-lock.json
+
+      - name: Install dependencies
+        working-directory: adapters/mcp
+        run: npm ci
+
+      - name: Build helper
+        working-directory: adapters/mcp
+        run: npm run build
+
+      - name: Verify MCP contracts
+        working-directory: adapters/mcp
+        run: |
+          npm run verify:stdio
+          npm run verify:bindings
+          npm run verify:file-policy
+          npm run verify:context-payload

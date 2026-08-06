@@ -165,6 +165,7 @@ Legacy fine-grained tools remain for compatibility. Assistants should not call N
 - [Architecture](docs/architecture.md)
 - [Development guide](docs/development.md)
 - [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
 - [Assistant rules example](docs/agent-rules.md)
 
 ## License

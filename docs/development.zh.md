@@ -116,6 +116,10 @@ stdio 回归测试会检查：
 
 回归测试会设置 `NEXUS_MCP_ALLOW_HEADLESS=1`，因为它不启动 Mac App。真实产品客户端不应设置这个变量；没有这个变量时，Helper 只有在 Nexus Mac App heartbeat 新鲜时才返回上下文。
 
+GitHub Actions 会在 `main` 的更新和 Pull Request 中运行同一套 Swift 格式化、构建、
+测试、Helper 构建和 MCP 契约校验。请让本地校验与该工作流保持一致，不要只在 CI 中
+增加本地无法复现的单独检查。
+
 ## 产品边界
 
 - Nexus 提供上下文，不替代用户和助手之间的对话。
