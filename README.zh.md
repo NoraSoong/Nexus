@@ -1,0 +1,172 @@
+# Nexus
+
+[English README](README.md)
+
+Nexus 是 Mac 上面向编码助手的本地优先可信工作上下文层。
+
+它把需求说明、接口样例、SQL、日志、代码文件和人的补充说明，整理成一份短小、可审核、带来源的 **Context Pack**，并把后续代码变化作为独立证据持续交接。确认后的上下文可通过 MCP 供 Codex、Claude 等编码助手按需读取，原始材料不会被默认全部塞进模型。
+
+> 当前状态：pre-alpha 本地原型，可用于 dogfooding。正式 App Bundle、私有 Helper runtime、签名、公证和 DMG 尚未完成。
+
+## 为什么使用 Nexus
+
+多开一个助手对话可以保存对话历史，但不能可靠回答：
+
+- 当前应该以哪份材料为准；
+- 哪些内容是事实、假设或待确认问题；
+- 哪些本地材料允许助手读取；
+- 同一仓库的多个并行工作区分别对应哪项需求；
+- 如何在材料越来越多时保持上下文简短、可追溯。
+
+Nexus 不管理 Agent，也不接管 Git。它管理的是两者之间容易丢失、混淆或过期的工作上下文：
+
+```mermaid
+flowchart LR
+    Materials["杂乱材料"] --> Draft["模型整理草稿"]
+    Draft --> Review["用户审核"]
+    Review --> Pack["已确认 Context Pack"]
+    Pack --> MCP["受控 MCP 投影"]
+    MCP --> Assistants["编码助手"]
+    Assistants --> Git["工作区代码变化"]
+    Git --> Draft
+```
+
+模型输出始终是草稿。只有用户明确采用后，Context Pack 才会成为该 Work 的当前上下文并进入 MCP。
+
+## 当前能力
+
+- 原生 SwiftUI Mac App、菜单栏入口和快速切换；
+- Work 创建、编辑、归档、恢复与删除；
+- 本地文件和粘贴文本材料，逐项控制助手可见性；
+- DeepSeek 与 OpenAI 上下文整理，API Key 分别保存在 macOS 钥匙串；
+- 带来源的目标、范围、事实、约束、验收条件、假设和待确认问题；
+- Context Pack 审核、差异查看、采用和材料变化后的过期提示；
+- Git 仓库、分支和已有 worktree 关联，以及基于确认版本的提交与工作区变化摘要；
+- 材料新鲜度与代码活动分离：普通编码不会把需求上下文错误标记为过期；
+- workspace binding：同一仓库的不同 worktree 可固定到不同 Work；
+- 只读 stdio MCP Helper，分层返回确认上下文、材料新鲜度和工作区活动；
+- App 未运行或助手读取被暂停时，不暴露 Nexus MCP tools。
+
+Nexus 不运行编码 Agent，不替用户决定实现方案，也不自动创建、合并或删除 worktree。
+
+## 环境要求
+
+当前开发基线：
+
+- macOS 14 或更高版本；
+- Xcode 26.5 / Swift 6.3.2；
+- Node.js `v26.5.0`，由 [`.node-version`](.node-version) 固定；
+- npm `11.17.0`。
+
+MCP Helper 使用 `node:sqlite`，不依赖系统 SQLite CLI 或第三方 native addon。
+
+## 构建与运行
+
+构建并测试 Swift：
+
+```bash
+swift build
+swift test
+```
+
+构建 MCP Helper：
+
+```bash
+cd adapters/mcp
+npm ci
+npm run build
+```
+
+启动开发版 Mac App：
+
+```bash
+.build/debug/NexusMac
+```
+
+Nexus 默认把数据保存到：
+
+```text
+~/Library/Application Support/Nexus
+```
+
+普通用户不需要配置数据库路径或环境变量。`NEXUS_HOME` 只用于开发中的隔离测试。
+
+## 基本使用
+
+1. 启动 Nexus，从菜单栏打开主窗口。
+2. 新建 Work，填写标题和一句话目标。
+3. 可选：关联一个本地 Git 主目录或已有 worktree。
+4. 拖入相关文件，或添加一段文本材料。
+5. 设置每份材料是否可供助手读取。
+6. 需要时填写一段可选的“补充说明”。
+7. 点击“整理当前工作”，检查本次发送、排除和截取的材料。
+8. 审核模型草稿，回答关键问题或修正文案。
+9. 明确采用后，主界面的“当前上下文”会立即更新，助手将读取这一版本。
+10. 后续出现新提交或未提交改动时，Nexus 会把它们显示为代码活动；用户再次整理并采用后才更新确认上下文。
+
+已有 Context Pack 时，完整内容、问题和来源可直接在主界面展开查看。补充说明只作为下一次整理的可选输入，不需要维护结构化进度表单。
+
+## MCP Helper
+
+安装开发用 helper shim：
+
+```bash
+scripts/install-helper.sh
+```
+
+默认安装位置：
+
+```text
+~/Library/Application Support/Nexus/bin/nexus-mcp
+```
+
+检查 Helper：
+
+```bash
+"$HOME/Library/Application Support/Nexus/bin/nexus-mcp" --version
+"$HOME/Library/Application Support/Nexus/bin/nexus-mcp" --doctor
+```
+
+Codex 配置示例：
+
+```bash
+codex mcp add nexus \
+  -- "$HOME/Library/Application Support/Nexus/bin/nexus-mcp"
+```
+
+固定到一个已有 worktree：
+
+```bash
+codex mcp add nexus-worktree \
+  -- "$HOME/Library/Application Support/Nexus/bin/nexus-mcp" \
+  --workspace /path/to/worktree
+```
+
+推荐主入口：
+
+- `get_current_development_context`：返回唯一、紧凑的当前上下文对象，明确区分 `confirmed_context`、`source_freshness` 和 `workspace_activity`；
+- `read_context_material`：按需读取当前 binding 中可见的文本材料。
+
+旧的细粒度工具暂时保留兼容。当前对话已经有足够上下文时，助手不应默认调用 Nexus。建议规则见 [docs/agent-rules.zh.md](docs/agent-rules.zh.md)。
+
+## 数据与安全
+
+- 数据默认保存在本机；
+- 只读取用户明确添加或关联的文件与仓库；
+- MCP 当前只读；
+- Hidden 材料不能通过 MCP 读取；
+- 模型调用只由用户主动触发；
+- API Key 不写入 SQLite，也不会通过 MCP 暴露；
+- 草稿失败、取消或未采用时，不改变当前 Context Pack；
+- Git 集成只读取状态、提交摘要和受预算控制的变更证据，不执行 `checkout`、`stash`、`reset` 或提交。
+
+## 项目文档
+
+- [架构说明](docs/architecture.zh.md)
+- [开发指南](docs/development.zh.md)
+- [参与贡献](CONTRIBUTING.md)
+- [助手规则示例](docs/agent-rules.zh.md)
+
+## License
+
+本项目使用 [Apache License 2.0](LICENSE)。
