@@ -1,5 +1,10 @@
 # Nexus
 
+[![Verify](https://github.com/NoraSoong/Nexus/actions/workflows/verify.yml/badge.svg)](https://github.com/NoraSoong/Nexus/actions/workflows/verify.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Swift](https://img.shields.io/badge/Swift-6.3-orange.svg)]()
+[![macOS](https://img.shields.io/badge/macOS-14%2B-lightgrey.svg)]()
+
 [中文说明](README.zh.md)
 
 Nexus is a local-first trusted work-context layer for coding assistants on macOS.

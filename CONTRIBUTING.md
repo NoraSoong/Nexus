@@ -2,6 +2,8 @@
 
 Nexus is a pre-alpha macOS developer tool. Small, focused contributions are easier to review and less likely to disturb the trust boundary around local context.
 
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+
 ## Before Opening a Pull Request
 
 1. Keep SwiftUI in `Sources/NexusMac`, domain and persistence logic in `Sources/NexusCore`, and MCP protocol adaptation in `adapters/mcp`.
