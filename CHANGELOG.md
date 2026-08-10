@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] — 2026-08-06
-
 ### Added
 - Native SwiftUI Mac app with menu-bar entry and quick switching
 - Work creation, editing, archive, restore, and delete flows
@@ -26,5 +24,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   assistant access is paused
 - GitHub CI: Swift formatting, build, test, MCP helper build, and MCP
   contract verification on push to `main` and pull requests
-
-[0.1.0]: https://github.com/NoraSoong/Nexus/releases/tag/v0.1.0
