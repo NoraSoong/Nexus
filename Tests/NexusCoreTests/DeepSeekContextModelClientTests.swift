@@ -235,13 +235,40 @@ final class DeepSeekContextModelClientTests: XCTestCase {
         XCTAssertEqual(DeepSeekStubURLProtocol.requestCount, 1)
     }
 
-    func testLengthFinishReasonDoesNotRetry() async throws {
+    func testLengthFinishReasonRetriesWithCompactPrompt() async throws {
+        let source = sourceDocument()
+        DeepSeekStubURLProtocol.handler = { request in
+            if DeepSeekStubURLProtocol.requestCount == 1 {
+                return try self.chatResponse(request: request, content: "{}", finishReason: "length")
+            }
+            let body = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: try self.requestBodyData(request)) as? [String: Any]
+            )
+            let messages = try XCTUnwrap(body["messages"] as? [[String: Any]])
+            let systemPrompt = try XCTUnwrap(messages.first?["content"] as? String)
+            XCTAssertTrue(systemPrompt.contains("compact retry"))
+            return try self.successResponse(
+                request: request,
+                content: self.validContent(sourceID: source.id)
+            )
+        }
+
+        let result = try await makeClient().generate(
+            request: ContextModelRequest(taskID: "task", language: "English", sources: [source]),
+            apiKey: "key"
+        )
+
+        XCTAssertEqual(result.objective, "Objective")
+        XCTAssertEqual(DeepSeekStubURLProtocol.requestCount, 2)
+    }
+
+    func testRepeatedLengthFinishReasonFailsAfterCompactRetry() async throws {
         DeepSeekStubURLProtocol.handler = { request in
             try self.chatResponse(request: request, content: "{}", finishReason: "length")
         }
 
         await assertModelError(.outputTruncated(.deepSeek))
-        XCTAssertEqual(DeepSeekStubURLProtocol.requestCount, 1)
+        XCTAssertEqual(DeepSeekStubURLProtocol.requestCount, 2)
     }
 
     func testTransportErrorsDoNotRetry() async throws {

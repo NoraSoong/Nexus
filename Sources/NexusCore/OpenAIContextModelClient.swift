@@ -18,13 +18,32 @@ public final class OpenAIContextModelClient: ContextModelClient, @unchecked Send
     }
 
     public func generate(request: ContextModelRequest, apiKey: String) async throws -> ContextPackContent {
+        for attempt in 0..<2 {
+            do {
+                return try await generateOnce(
+                    request: request,
+                    apiKey: apiKey,
+                    compactOutput: attempt > 0
+                )
+            } catch {
+                guard attempt == 0, shouldRetry(error) else { throw error }
+            }
+        }
+        throw ContextModelError.emptyResponse(.openAI)
+    }
+
+    private func generateOnce(
+        request: ContextModelRequest,
+        apiKey: String,
+        compactOutput: Bool
+    ) async throws -> ContextPackContent {
         var urlRequest = URLRequest(url: endpoint)
         urlRequest.httpMethod = "POST"
         urlRequest.timeoutInterval = 90
         urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.httpBody = try JSONSerialization.data(
-            withJSONObject: try requestBody(for: request),
+            withJSONObject: try requestBody(for: request, compactOutput: compactOutput),
             options: [.sortedKeys]
         )
 
@@ -52,7 +71,10 @@ public final class OpenAIContextModelClient: ContextModelClient, @unchecked Send
         )
     }
 
-    private func requestBody(for request: ContextModelRequest) throws -> [String: Any] {
+    private func requestBody(
+        for request: ContextModelRequest,
+        compactOutput: Bool
+    ) throws -> [String: Any] {
         [
             "model": configuration.model,
             "store": false,
@@ -60,7 +82,10 @@ public final class OpenAIContextModelClient: ContextModelClient, @unchecked Send
             "input": [
                 [
                     "role": "system",
-                    "content": ContextModelPrompt.systemPrompt(language: request.language),
+                    "content": ContextModelPrompt.systemPrompt(
+                        language: request.language,
+                        compactOutput: compactOutput
+                    ),
                 ],
                 [
                     "role": "user",
@@ -83,6 +108,12 @@ public final class OpenAIContextModelClient: ContextModelClient, @unchecked Send
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw ContextModelError.invalidResponse(.openAI, "response was not a JSON object")
         }
+        if object["status"] as? String == "incomplete",
+            let details = object["incomplete_details"] as? [String: Any],
+            details["reason"] as? String == "max_output_tokens"
+        {
+            throw ContextModelError.outputTruncated(.openAI)
+        }
         if let outputText = object["output_text"] as? String, !outputText.isEmpty {
             return outputText
         }
@@ -101,5 +132,12 @@ public final class OpenAIContextModelClient: ContextModelClient, @unchecked Send
             }
         }
         throw ContextModelError.emptyResponse(.openAI)
+    }
+
+    private func shouldRetry(_ error: Error) -> Bool {
+        guard case .outputTruncated(.openAI) = error as? ContextModelError else {
+            return false
+        }
+        return true
     }
 }
