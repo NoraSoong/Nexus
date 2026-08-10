@@ -75,6 +75,20 @@ final class ContextMaterialExtractorTests: XCTestCase {
         XCTAssertEqual(input.sources.first(where: { $0.id == "file:big" })?.content, body)
     }
 
+    func testSameSizeRewriteChangesContentHash() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("contract.md")
+        try "Original contract".write(to: url, atomically: true, encoding: .utf8)
+
+        let original = try TextMaterialReader.capture(at: url, characterLimit: 40_000)
+        try "Modified contract".write(to: url, atomically: true, encoding: .utf8)
+        let changed = try TextMaterialReader.capture(at: url, characterLimit: 40_000)
+
+        XCTAssertEqual(original.characterCount, changed.characterCount)
+        XCTAssertNotEqual(original.contentHash, changed.contentHash)
+    }
+
     func testPrepareDistinguishesEmptyInvalidAndOversizedFiles() throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

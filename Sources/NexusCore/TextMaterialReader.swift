@@ -131,6 +131,11 @@ enum TextMaterialReader {
             return DetectedEncoding(encoding: .utf16BigEndian, bomByteCount: 2)
         }
 
+        if !sample.contains(0),
+            String(data: sample, encoding: .utf8) != nil || mayEndWithIncompleteUTF8(sample)
+        {
+            return DetectedEncoding(encoding: .utf8, bomByteCount: 0)
+        }
         if let inferred = inferredUTF16Encoding(from: sample) {
             return DetectedEncoding(encoding: inferred, bomByteCount: 0)
         }
