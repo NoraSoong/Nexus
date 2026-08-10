@@ -145,7 +145,7 @@ enum TextMaterialReader {
 
     private static func inferredUTF16Encoding(from sample: Data) -> Encoding? {
         let evenLength = sample.count - (sample.count % 2)
-        guard evenLength >= 4 else { return nil }
+        guard evenLength >= 8 else { return nil }
         var evenZeros = 0
         var oddZeros = 0
         var pairCount = 0
