@@ -24,3 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   assistant access is paused
 - GitHub CI: Swift formatting, build, test, MCP helper build, and MCP
   contract verification on push to `main` and pull requests
+
+### Changed
+- Streamed UTF-8 and UTF-16 material extraction and MCP pagination with a
+  64 MiB per-file safety limit
+- One compact retry when a context model reaches its output limit
+- Context Pack, binding, and projection persistence split behind the existing
+  `ProjectionStore` compatibility facade

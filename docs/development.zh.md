@@ -112,7 +112,9 @@ stdio 回归测试会检查：
 - server instructions 会提示 MCP 客户端：当前对话上下文已经足够时，不要默认调用 Nexus。
 - 迁移期间 v1 fallback 和 v2 Context Pack projection 都能被读取。
 - 主上下文不包含重复的 legacy wrapper，并保持在 24,000 字符预算内。
-- 不支持或二进制文件不会以乱码形式返回。
+- UTF-8 和 UTF-16 分页不会破坏字符边界；
+- 二进制、不支持、无效编码和超大文件会被拒绝，而不是作为乱码返回；
+- 来源读取受 64 MiB 上限保护，不会把整份文件一次载入内存。
 
 回归测试会设置 `NEXUS_MCP_ALLOW_HEADLESS=1`，因为它不启动 Mac App。真实产品客户端不应设置这个变量；没有这个变量时，Helper 只有在 Nexus Mac App heartbeat 新鲜时才返回上下文。
 

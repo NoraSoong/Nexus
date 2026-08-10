@@ -22,11 +22,11 @@ The SwiftUI app provides the menu bar, Work navigation, material selection, revi
 
 ### NexusCore
 
-The Swift package owns domain types, SQLite storage, material extraction, Context Pack review, Git activity snapshots, and MCP projection generation. It is independent of SwiftUI so behavior can be tested without a running app.
+The Swift package owns domain types, SQLite storage, material extraction, Context Pack review, Git activity snapshots, and MCP projection generation. `ProjectionStore` remains the compatibility facade while Context Pack persistence, binding persistence, and projection publication are isolated internal components. Core is independent of SwiftUI so behavior can be tested without a running app.
 
 ### MCP Helper
 
-The TypeScript helper runs over stdio and reads stable projections from SQLite. It resolves an explicit or workspace binding, enforces assistant access, and exposes a compact current-context result plus on-demand reads of visible text materials. It does not query Core domain tables directly.
+The TypeScript helper runs over stdio and reads stable projections from SQLite. It resolves an explicit or workspace binding, enforces assistant access, and exposes a compact current-context result plus streamed, paginated reads of visible text materials. It does not query Core domain tables directly or load an entire source file into memory.
 
 ## Context Lifecycle
 
@@ -36,6 +36,10 @@ The TypeScript helper runs over stdio and reads stable projections from SQLite. 
 4. The user reviews and approves a Context Pack.
 5. Core atomically publishes a projection for the approved Pack.
 6. Assistants read that projection through MCP and request visible source material only when needed.
+
+Text extraction recognizes UTF-8 and UTF-16 LE/BE with or without a BOM. A source is capped at 40,000 characters, a preparation request at 120,000 characters, and an original file at 64 MiB. Larger files are excluded before their body is read. Truncated sources preserve their beginning and end and remain explicitly marked as truncated.
+
+If a provider stops at its output limit, Nexus performs one compact retry. Authentication, rate-limit, transport, cancellation, and refusal errors are not retried. Neither attempt affects MCP until the user approves the result.
 
 Material freshness and workspace activity are intentionally separate. A code change is evidence for a later update; it does not automatically rewrite confirmed requirements or mark them incorrect.
 
