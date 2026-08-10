@@ -458,6 +458,11 @@ struct L10n {
         case .missing: return zh ? "文件已不存在" : "File is missing"
         case .directory: return zh ? "目录暂不参与整理" : "Directories are not prepared yet"
         case .unsupportedType: return zh ? "暂不支持这种文件" : "File type is not supported yet"
+        case .empty: return zh ? "文件没有可整理的内容" : "File is empty"
+        case .binary: return zh ? "二进制文件不能作为文本整理" : "Binary files cannot be prepared as text"
+        case .invalidEncoding: return zh ? "文本编码无法识别" : "Text encoding is not recognized"
+        case .tooLarge: return zh ? "文件过大，请添加摘录" : "File is too large; add an excerpt instead"
+        case .changedDuringRead: return zh ? "读取时文件发生变化，请重试" : "File changed while being read; try again"
         case .unreadable: return zh ? "无法读取为文本" : "Could not read as text"
         case .budgetExceeded: return zh ? "超过本次长度预算" : "Outside this preparation budget"
         }

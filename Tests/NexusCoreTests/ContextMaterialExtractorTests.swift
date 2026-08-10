@@ -40,7 +40,74 @@ final class ContextMaterialExtractorTests: XCTestCase {
         XCTAssertTrue(input.sources.contains(where: { $0.id == "file:text" }))
         XCTAssertFalse(input.sources.contains(where: { $0.id == "note:hidden" }))
         XCTAssertEqual(input.excludedSources.first(where: { $0.id == "note:hidden" })?.reason, .hidden)
-        XCTAssertEqual(input.excludedSources.first(where: { $0.id == "file:binary" })?.reason, .unreadable)
+        XCTAssertEqual(input.excludedSources.first(where: { $0.id == "file:binary" })?.reason, .binary)
+    }
+
+    func testPrepareReadsUTF16WithAndWithoutBOM() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let littleBOMURL = directory.appendingPathComponent("little-bom.txt")
+        let littleURL = directory.appendingPathComponent("little.txt")
+        let bigURL = directory.appendingPathComponent("big.txt")
+        let body = "Nexus UTF-16 context"
+        let little = try XCTUnwrap(body.data(using: .utf16LittleEndian))
+        let big = try XCTUnwrap(body.data(using: .utf16BigEndian))
+        try (Data([0xFF, 0xFE]) + little).write(to: littleBOMURL)
+        try little.write(to: littleURL)
+        try big.write(to: bigURL)
+
+        let task = taskRecord()
+        let input = try ContextMaterialExtractor.prepare(
+            task: task,
+            baseRevision: 1,
+            supplement: nil,
+            notes: [],
+            files: [
+                fileRecord(id: "little-bom", taskID: task.id, url: littleBOMURL),
+                fileRecord(id: "little", taskID: task.id, url: littleURL),
+                fileRecord(id: "big", taskID: task.id, url: bigURL),
+            ],
+            repository: nil
+        )
+
+        XCTAssertEqual(input.sources.first(where: { $0.id == "file:little-bom" })?.content, body)
+        XCTAssertEqual(input.sources.first(where: { $0.id == "file:little" })?.content, body)
+        XCTAssertEqual(input.sources.first(where: { $0.id == "file:big" })?.content, body)
+    }
+
+    func testPrepareDistinguishesEmptyInvalidAndOversizedFiles() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let emptyURL = directory.appendingPathComponent("empty.txt")
+        let invalidURL = directory.appendingPathComponent("invalid.txt")
+        let oversizedURL = directory.appendingPathComponent("oversized.log")
+        try Data().write(to: emptyURL)
+        try Data([0xFF, 0xFF, 0xFF]).write(to: invalidURL)
+        XCTAssertTrue(FileManager.default.createFile(atPath: oversizedURL.path, contents: nil))
+        let oversizedHandle = try FileHandle(forWritingTo: oversizedURL)
+        try oversizedHandle.truncate(atOffset: TextMaterialReader.maximumFileByteCount + 1)
+        try oversizedHandle.close()
+
+        let task = taskRecord()
+        let input = try ContextMaterialExtractor.prepare(
+            task: task,
+            baseRevision: 1,
+            supplement: nil,
+            notes: [],
+            files: [
+                fileRecord(id: "empty", taskID: task.id, url: emptyURL),
+                fileRecord(id: "invalid", taskID: task.id, url: invalidURL),
+                fileRecord(id: "oversized", taskID: task.id, url: oversizedURL),
+            ],
+            repository: nil
+        )
+
+        XCTAssertEqual(input.excludedSources.first(where: { $0.id == "file:empty" })?.reason, .empty)
+        XCTAssertEqual(
+            input.excludedSources.first(where: { $0.id == "file:invalid" })?.reason,
+            .invalidEncoding
+        )
+        XCTAssertEqual(input.excludedSources.first(where: { $0.id == "file:oversized" })?.reason, .tooLarge)
     }
 
     func testLargeSourceKeepsHeadAndTailWithinPerSourceBudget() throws {

@@ -56,6 +56,11 @@ public enum ContextSourceExclusionReason: String, Codable, Equatable, Sendable {
     case missing
     case directory
     case unsupportedType = "unsupported_type"
+    case empty
+    case binary
+    case invalidEncoding = "invalid_encoding"
+    case tooLarge = "too_large"
+    case changedDuringRead = "changed_during_read"
     case unreadable
     case budgetExceeded = "budget_exceeded"
 }
