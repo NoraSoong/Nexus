@@ -269,7 +269,7 @@ public final class ProjectionStore: @unchecked Sendable {
         ).compactMap { $0["task_id"] }
         for taskID in taskIDs {
             guard let task = try findTask(id: taskID, db: db),
-                let existingPack = try currentContextPack(taskID: task.id, db: db)
+                let existingPack = try ContextPackPersistence.currentPack(taskID: task.id, in: db)
             else {
                 continue
             }
@@ -551,40 +551,17 @@ public final class ProjectionStore: @unchecked Sendable {
 
     public func workspaceBinding(taskID: String) throws -> ContextBindingRecord? {
         let db = try openDatabase()
-        return try db.queryOne(
-            """
-            SELECT id, scope_type, scope_key, mode, task_id, active_revision, updated_at
-            FROM context_bindings
-            WHERE scope_type = 'workspace' AND task_id = ?
-            ORDER BY updated_at DESC
-            LIMIT 1;
-            """,
-            bindings: [taskID]
-        ).map(ProjectionRowMapper.binding)
+        return try ContextBindingPersistence.workspaceBinding(taskID: taskID, in: db)
     }
 
     public func workspaceBinding(path: String) throws -> ContextBindingRecord? {
         let db = try openDatabase()
-        return try db.queryOne(
-            """
-            SELECT id, scope_type, scope_key, mode, task_id, active_revision, updated_at
-            FROM context_bindings
-            WHERE scope_type = 'workspace' AND scope_key = ?;
-            """,
-            bindings: [WorkspacePath.normalize(path)]
-        ).map(ProjectionRowMapper.binding)
+        return try ContextBindingPersistence.workspaceBinding(path: path, in: db)
     }
 
     public func listWorkspaceBindings() throws -> [ContextBindingRecord] {
         let db = try openDatabase()
-        return try db.queryAll(
-            """
-            SELECT id, scope_type, scope_key, mode, task_id, active_revision, updated_at
-            FROM context_bindings
-            WHERE scope_type = 'workspace'
-            ORDER BY updated_at DESC;
-            """
-        ).map(ProjectionRowMapper.binding)
+        return try ContextBindingPersistence.listWorkspaceBindings(in: db)
     }
 
     public func currentGitBranch(at path: String) -> String {
@@ -852,89 +829,50 @@ public final class ProjectionStore: @unchecked Sendable {
             createdAt: timestamp,
             updatedAt: timestamp
         )
-        try db.execute(
-            """
-            INSERT INTO context_drafts (
-                id, task_id, base_revision, provider, model, payload_json,
-                source_manifest_json, answers_json, status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-            """,
-            bindings: [
-                draft.id, draft.taskID, String(draft.baseRevision), draft.provider, draft.model,
-                try encodeJSON(draft.content), try encodeJSON(draft.sourceManifest), try encodeJSON(draft.answers),
-                draft.status, draft.createdAt, draft.updatedAt,
-            ]
-        )
+        try ContextPackPersistence.insertDraft(draft, into: db)
         return draft
     }
 
     public func latestContextDraft(taskID: String) throws -> ContextDraft? {
         let db = try openDatabase()
-        return try db.queryOne(
-            """
-            SELECT id, task_id, base_revision, provider, model, payload_json,
-                   source_manifest_json, answers_json, status, created_at, updated_at
-            FROM context_drafts
-            WHERE task_id = ? AND status = 'pending'
-            ORDER BY updated_at DESC
-            LIMIT 1;
-            """,
-            bindings: [taskID]
-        ).map(decodeContextDraft)
+        return try ContextPackPersistence.latestDraft(taskID: taskID, in: db)
     }
 
     public func updateContextDraft(id: String, content: ContextPackContent, answers: [String: String]) throws {
         let db = try openDatabase()
-        try db.execute(
-            """
-            UPDATE context_drafts
-            SET payload_json = ?, answers_json = ?, updated_at = ?
-            WHERE id = ? AND status = 'pending';
-            """,
-            bindings: [try encodeJSON(content), try encodeJSON(answers), now(), id]
+        try ContextPackPersistence.updateDraft(
+            id: id,
+            content: content,
+            answers: answers,
+            updatedAt: now(),
+            in: db
         )
     }
 
     public func currentContextPack(taskID: String) throws -> ContextPack? {
         let db = try openDatabase()
-        return try currentContextPack(taskID: taskID, db: db)
+        return try ContextPackPersistence.currentPack(taskID: taskID, in: db)
     }
 
     public func contextPackHistory(taskID: String, limit: Int = 20) throws -> [ContextPack] {
         guard limit > 0 else { return [] }
         let db = try openDatabase()
-        return try db.queryAll(
-            """
-            SELECT id, task_id, revision, payload_json, source_manifest_json,
-                   freshness, stale_reason, created_at
-            FROM context_packs
-            WHERE task_id = ?
-            ORDER BY revision DESC
-            LIMIT ?;
-            """,
-            bindings: [taskID, String(limit)]
-        ).map(decodeContextPack)
+        return try ContextPackPersistence.history(taskID: taskID, limit: limit, in: db)
     }
 
     public func previousContextPack(taskID: String, beforeRevision: Int64) throws -> ContextPack? {
         let db = try openDatabase()
-        return try db.queryOne(
-            """
-            SELECT id, task_id, revision, payload_json, source_manifest_json,
-                   freshness, stale_reason, created_at
-            FROM context_packs
-            WHERE task_id = ? AND revision < ?
-            ORDER BY revision DESC
-            LIMIT 1;
-            """,
-            bindings: [taskID, String(beforeRevision)]
-        ).map(decodeContextPack)
+        return try ContextPackPersistence.previousPack(
+            taskID: taskID,
+            beforeRevision: beforeRevision,
+            in: db
+        )
     }
 
     public func currentContextSourceChanges(taskID: String) throws -> [ContextSourceDelta] {
         let db = try openDatabase()
         guard let task = try findTask(id: taskID, db: db),
-            let pack = try currentContextPack(taskID: taskID, db: db)
+            let pack = try ContextPackPersistence.currentPack(taskID: taskID, in: db)
         else {
             return []
         }
@@ -949,19 +887,9 @@ public final class ProjectionStore: @unchecked Sendable {
     @discardableResult
     public func approveContextDraft(id: String, currentInput: ContextPreparationInput) throws -> ContextPack {
         let db = try openDatabase()
-        guard
-            let preliminaryDraftRow = try db.queryOne(
-                """
-                SELECT id, task_id, base_revision, provider, model, payload_json,
-                       source_manifest_json, answers_json, status, created_at, updated_at
-                FROM context_drafts WHERE id = ? AND status = 'pending';
-                """,
-                bindings: [id]
-            )
-        else {
+        guard let preliminaryDraft = try ContextPackPersistence.pendingDraft(id: id, in: db) else {
             throw ContextPreparationError.draftNotFound
         }
-        let preliminaryDraft = try decodeContextDraft(preliminaryDraftRow)
         let projectionContext = try loadProjectionContext(taskID: preliminaryDraft.taskID)
         let gitBaselineCandidate = projectionContext.repository.flatMap { repository -> GitContextBaseline? in
             let currentBranch = GitRepositoryReader.branch(at: repository.path)
@@ -982,19 +910,9 @@ public final class ProjectionStore: @unchecked Sendable {
 
         try db.execute("BEGIN IMMEDIATE;")
         do {
-            guard
-                let draftRow = try db.queryOne(
-                    """
-                    SELECT id, task_id, base_revision, provider, model, payload_json,
-                           source_manifest_json, answers_json, status, created_at, updated_at
-                    FROM context_drafts WHERE id = ? AND status = 'pending';
-                    """,
-                    bindings: [id]
-                )
-            else {
+            guard let draft = try ContextPackPersistence.pendingDraft(id: id, in: db) else {
                 throw ContextPreparationError.draftNotFound
             }
-            let draft = try decodeContextDraft(draftRow)
             let currentManifest = currentInput.sources.map(\.reference)
             guard draft.taskID == currentInput.taskID,
                 ContextMaterialExtractor.manifestFingerprint(draft.sourceManifest)
@@ -1002,12 +920,15 @@ public final class ProjectionStore: @unchecked Sendable {
             else {
                 throw ContextPreparationError.staleDraft
             }
-            let baseContextPackID = try contextPackID(
+            let baseContextPackID = try ContextPackPersistence.packID(
                 taskID: draft.taskID,
                 atOrBeforeRevision: draft.baseRevision,
-                db: db
+                in: db
             )
-            let currentContextPackID = try currentContextPack(taskID: draft.taskID, db: db)?.id
+            let currentContextPackID = try ContextPackPersistence.currentPack(
+                taskID: draft.taskID,
+                in: db
+            )?.id
             guard baseContextPackID == currentContextPackID else {
                 throw ContextPreparationError.staleDraft
             }
@@ -1029,44 +950,20 @@ public final class ProjectionStore: @unchecked Sendable {
                 staleReason: nil,
                 createdAt: timestamp
             )
-            try db.execute(
-                """
-                INSERT INTO context_packs (
-                    id, task_id, revision, payload_json, source_manifest_json,
-                    freshness, stale_reason, created_at
-                ) VALUES (?, ?, ?, ?, ?, 'fresh', NULL, ?);
-                """,
-                bindings: [
-                    pack.id, pack.taskID, String(pack.revision), try encodeJSON(pack.content),
-                    try encodeJSON(pack.sourceManifest), pack.createdAt,
-                ]
-            )
-            try db.execute(
-                """
-                INSERT INTO task_context_state (task_id, current_pack_id, updated_at)
-                VALUES (?, ?, ?)
-                ON CONFLICT(task_id) DO UPDATE SET
-                    current_pack_id = excluded.current_pack_id,
-                    updated_at = excluded.updated_at;
-                """,
-                bindings: [pack.taskID, pack.id, timestamp]
-            )
+            try ContextPackPersistence.insertPack(pack, into: db)
+            try ContextPackPersistence.setCurrentPack(pack, updatedAt: timestamp, in: db)
             if let gitBaselineCandidate {
-                try db.execute(
-                    """
-                    INSERT INTO context_pack_git_baselines (
-                        context_pack_id, task_id, workspace_path, branch, head_sha, captured_at
-                    ) VALUES (?, ?, ?, ?, ?, ?);
-                    """,
-                    bindings: [
-                        pack.id, pack.taskID, gitBaselineCandidate.workspacePath, gitBaselineCandidate.branch,
-                        gitBaselineCandidate.headSHA, timestamp,
-                    ]
+                try ContextPackPersistence.insertGitBaseline(
+                    gitBaselineCandidate,
+                    contextPackID: pack.id,
+                    into: db
                 )
             }
-            try db.execute(
-                "UPDATE context_drafts SET status = 'applied', updated_at = ? WHERE id = ?;",
-                bindings: [timestamp, draft.id]
+            try ContextPackPersistence.markDraft(
+                id: draft.id,
+                status: "applied",
+                updatedAt: timestamp,
+                in: db
             )
             let gitActivity = projectionContext.repository.map { repository in
                 GitRepositoryReader.activity(
@@ -1109,9 +1006,11 @@ public final class ProjectionStore: @unchecked Sendable {
 
     public func discardContextDraft(id: String) throws {
         let db = try openDatabase()
-        try db.execute(
-            "UPDATE context_drafts SET status = 'discarded', updated_at = ? WHERE id = ?;",
-            bindings: [now(), id]
+        try ContextPackPersistence.markDraft(
+            id: id,
+            status: "discarded",
+            updatedAt: now(),
+            in: db
         )
     }
 
@@ -1147,10 +1046,7 @@ public final class ProjectionStore: @unchecked Sendable {
             try db.execute("INSERT INTO revision_counter DEFAULT VALUES;")
             let revision = db.lastInsertRowID
             if let persisted = packResolution.persistedPack {
-                try db.execute(
-                    "UPDATE context_packs SET freshness = ?, stale_reason = ? WHERE id = ?;",
-                    bindings: [persisted.freshness, persisted.staleReason, persisted.id]
-                )
+                try ContextPackPersistence.updateFreshness(persisted, in: db)
             }
             try writeProjectionRows(
                 db: db,
@@ -1264,37 +1160,16 @@ public final class ProjectionStore: @unchecked Sendable {
         revision: Int64,
         now: String
     ) throws {
-        try insertProjection(
-            db, taskID: task.id, type: "active_task", payload: payloads.activePayload, revision: revision, now: now,
-            pack: pack)
-        try insertProjection(
-            db, taskID: task.id, type: "manifest", payload: payloads.manifestPayload, revision: revision, now: now,
-            pack: pack)
-        try insertProjection(
-            db, taskID: task.id, type: "resume_brief", payload: payloads.briefPayload, revision: revision, now: now,
-            pack: pack)
-        try db.execute("DELETE FROM mcp_note_exports WHERE task_id = ?;", bindings: [task.id])
-        for note in context.notes {
-            try db.execute(
-                """
-                INSERT INTO mcp_note_exports (
-                    projection_schema_version, task_id, note_id, revision, title, body, generated_at
-                ) VALUES (2, ?, ?, ?, ?, ?, ?);
-                """,
-                bindings: [task.id, note.id, String(revision), note.title, note.body, now]
-            )
-        }
-        try db.execute("DELETE FROM mcp_file_exports WHERE task_id = ?;", bindings: [task.id])
-        for file in context.visibleFiles {
-            try db.execute(
-                """
-                INSERT INTO mcp_file_exports (
-                    projection_schema_version, task_id, file_id, revision, display_name, path, file_type, generated_at
-                ) VALUES (2, ?, ?, ?, ?, ?, ?, ?);
-                """,
-                bindings: [task.id, file.id, String(revision), file.displayName, file.path, file.fileType, now]
-            )
-        }
+        try ProjectionPublisher.publish(
+            task: task,
+            notes: context.notes,
+            visibleFiles: context.visibleFiles,
+            payloads: payloads,
+            contextPack: pack,
+            revision: revision,
+            generatedAt: now,
+            in: db
+        )
     }
 
     private func advanceBindings(
@@ -1303,13 +1178,11 @@ public final class ProjectionStore: @unchecked Sendable {
         revision: Int64,
         now: String
     ) throws {
-        try db.execute(
-            """
-            UPDATE context_bindings
-            SET active_revision = ?, updated_at = ?
-            WHERE task_id = ?;
-            """,
-            bindings: [String(revision), now, taskID]
+        try ContextBindingPersistence.advance(
+            taskID: taskID,
+            revision: revision,
+            updatedAt: now,
+            in: db
         )
     }
 
@@ -1321,18 +1194,13 @@ public final class ProjectionStore: @unchecked Sendable {
         revision: Int64,
         now: String
     ) throws {
-        try db.execute(
-            """
-            INSERT INTO context_bindings (
-                scope_type, scope_key, mode, task_id, active_revision, updated_at
-            ) VALUES (?, ?, 'pinned_task', ?, ?, ?)
-            ON CONFLICT(scope_type, scope_key) DO UPDATE SET
-                mode = excluded.mode,
-                task_id = excluded.task_id,
-                active_revision = excluded.active_revision,
-                updated_at = excluded.updated_at;
-            """,
-            bindings: [scopeType, scopeKey, taskID, String(revision), now]
+        try ContextBindingPersistence.upsert(
+            scopeType: scopeType,
+            scopeKey: scopeKey,
+            taskID: taskID,
+            revision: revision,
+            updatedAt: now,
+            in: db
         )
     }
 
@@ -1395,72 +1263,6 @@ public final class ProjectionStore: @unchecked Sendable {
         )
     }
 
-    private func currentContextPack(taskID: String, db: SQLiteDatabase) throws -> ContextPack? {
-        try db.queryOne(
-            """
-            SELECT p.id, p.task_id, p.revision, p.payload_json, p.source_manifest_json,
-                   p.freshness, p.stale_reason, p.created_at
-            FROM task_context_state s
-            JOIN context_packs p ON p.id = s.current_pack_id
-            WHERE s.task_id = ?;
-            """,
-            bindings: [taskID]
-        ).map(decodeContextPack)
-    }
-
-    private func contextPackID(
-        taskID: String,
-        atOrBeforeRevision revision: Int64,
-        db: SQLiteDatabase
-    ) throws -> String? {
-        try db.queryOne(
-            """
-            SELECT id
-            FROM context_packs
-            WHERE task_id = ? AND revision <= ?
-            ORDER BY revision DESC
-            LIMIT 1;
-            """,
-            bindings: [taskID, String(revision)]
-        )?["id"]
-    }
-
-    private func decodeContextDraft(_ row: [String: String]) throws -> ContextDraft {
-        ContextDraft(
-            id: row["id"] ?? "",
-            taskID: row["task_id"] ?? "",
-            baseRevision: Int64(row["base_revision"] ?? "0") ?? 0,
-            provider: row["provider"] ?? "",
-            model: row["model"] ?? "",
-            content: try decodeJSON(ContextPackContent.self, row["payload_json"] ?? "{}"),
-            sourceManifest: try decodeJSON([ContextSourceRef].self, row["source_manifest_json"] ?? "[]"),
-            answers: try decodeJSON([String: String].self, row["answers_json"] ?? "{}"),
-            status: row["status"] ?? "pending",
-            createdAt: row["created_at"] ?? "",
-            updatedAt: row["updated_at"] ?? ""
-        )
-    }
-
-    private func decodeContextPack(_ row: [String: String]) throws -> ContextPack {
-        ContextPack(
-            id: row["id"] ?? "",
-            taskID: row["task_id"] ?? "",
-            revision: Int64(row["revision"] ?? "0") ?? 0,
-            content: try decodeJSON(ContextPackContent.self, row["payload_json"] ?? "{}"),
-            sourceManifest: try decodeJSON([ContextSourceRef].self, row["source_manifest_json"] ?? "[]"),
-            freshness: row["freshness"] ?? "possibly_stale",
-            staleReason: row["stale_reason"],
-            createdAt: row["created_at"] ?? ""
-        )
-    }
-
-    private func encodeJSON<T: Encodable>(_ value: T) throws -> String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        let data = try encoder.encode(value)
-        return String(data: data, encoding: .utf8) ?? "{}"
-    }
-
     private func openDatabase() throws -> SQLiteDatabase {
         let db = try SQLiteDatabase(url: databaseURL, accessGate: databaseAccessGate)
         if !migrationCompleted {
@@ -1469,36 +1271,6 @@ public final class ProjectionStore: @unchecked Sendable {
             schemaMigrationCount += 1
         }
         return db
-    }
-
-    private func decodeJSON<T: Decodable>(_ type: T.Type, _ value: String) throws -> T {
-        try JSONDecoder().decode(type, from: Data(value.utf8))
-    }
-
-    private func insertProjection(
-        _ db: SQLiteDatabase,
-        taskID: String,
-        type: String,
-        payload: String,
-        revision: Int64,
-        now: String,
-        pack: ContextPack?
-    ) throws {
-        try db.execute(
-            """
-            INSERT INTO mcp_context_projections (
-                projection_schema_version, task_id, scope_type, scope_key, projection_type,
-                payload_json, revision, freshness_at_generation, last_verified_at,
-                stale_reason, generated_at, producer_core_version, producer_app_build
-            ) VALUES (
-                2, ?, 'task', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-            );
-            """,
-            bindings: [
-                taskID, taskID, type, payload, String(revision), pack?.freshness ?? "fresh", now,
-                pack?.staleReason, now, NexusVersion.current, NexusVersion.current,
-            ]
-        )
     }
 
     @discardableResult
