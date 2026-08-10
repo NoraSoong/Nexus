@@ -446,10 +446,26 @@ struct L10n {
         zh ? "约 \(count) 个字符" : "About \(count) characters"
     }
 
-    func preparationSelectionSummary(count: Int, characterCount: Int) -> String {
-        zh
-            ? "已选 \(count) 项 · 约 \(characterCount) 个字符"
-            : "\(count) selected · about \(characterCount) characters"
+    func preparationSelectionSummary(
+        count: Int,
+        characterCount: Int,
+        characterBudget: Int,
+        truncatedCount: Int
+    ) -> String {
+        var parts = [
+            zh ? "\(count) 项" : "\(count) selected",
+            zh
+                ? "约 \(characterCount.formatted()) / \(characterBudget.formatted()) 个字符"
+                : "about \(characterCount.formatted()) / \(characterBudget.formatted()) characters",
+        ]
+        if truncatedCount > 0 {
+            parts.append(
+                zh
+                    ? "\(truncatedCount) 项已截取"
+                    : "\(truncatedCount) truncated"
+            )
+        }
+        return parts.joined(separator: " · ")
     }
 
     func contextSourceExclusion(_ reason: ContextSourceExclusionReason) -> String {
