@@ -229,7 +229,7 @@ struct ContextPreparationView: View {
                     HStack(spacing: 8) {
                         SecureField(
                             l10n.contextAPIKeyPlaceholder(model.contextModelProvider),
-                            text: $model.contextPreparation.apiKeyInput
+                            text: $model.contextAPIKeyInput
                         )
                         .textFieldStyle(.roundedBorder)
                         .help(l10n.contextAPIKeyDescription)
@@ -380,7 +380,7 @@ struct ContextPreparationView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(l10n.preparedBrief)
                 .font(.headline)
-            TextEditor(text: $model.contextPreparation.draftBrief)
+            TextEditor(text: $model.contextDraftBrief)
                 .font(.body)
                 .scrollContentBackground(.hidden)
                 .padding(10)
