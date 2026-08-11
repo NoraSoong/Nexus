@@ -34,7 +34,12 @@ extension AppModel {
                 refresh()
                 refreshProjectWorktrees(projectID)
             } catch {
-                showToast(l10n.createFailed)
+                showToast(
+                    l10n.workspaceAssociationErrorMessage(
+                        error,
+                        existingWorkTitle: existingWorkTitle(for: error)
+                    )
+                )
                 message = "Create work from workspace error: \(error)"
             }
         }
@@ -53,7 +58,12 @@ extension AppModel {
                 refresh()
                 refreshProjectWorktrees(projectID)
             } catch {
-                showToast(l10n.repositoryFailed)
+                showToast(
+                    l10n.workspaceAssociationErrorMessage(
+                        error,
+                        existingWorkTitle: existingWorkTitle(for: error)
+                    )
+                )
                 message = "Bind workspace error: \(error)"
             }
         }
@@ -78,10 +88,33 @@ extension AppModel {
                     refresh()
                     updateGitSuggestion()
                 } catch {
-                    showToast(l10n.repositoryFailed)
+                    showToast(
+                        l10n.workspaceAssociationErrorMessage(
+                            error,
+                            existingWorkTitle: existingWorkTitle(for: error)
+                        )
+                    )
                     message = "Repository error: \(error)"
                 }
             }
+        }
+    }
+
+    private func existingWorkTitle(for error: Error) -> String? {
+        let taskID: String?
+        switch error {
+        case let associationError as WorkspaceAssociationError:
+            switch associationError {
+            case .alreadyBound(_, let existingTaskID), .alreadyLinked(_, let existingTaskID):
+                taskID = existingTaskID
+            default:
+                taskID = nil
+            }
+        default:
+            taskID = nil
+        }
+        return taskID.flatMap { existingTaskID in
+            tasks.first(where: { $0.id == existingTaskID })?.title
         }
     }
 
@@ -96,7 +129,12 @@ extension AppModel {
                 showToast(l10n.branchLinked)
                 refresh()
             } catch {
-                showToast(l10n.relinkFailed)
+                showToast(
+                    l10n.workspaceAssociationErrorMessage(
+                        error,
+                        existingWorkTitle: existingWorkTitle(for: error)
+                    )
+                )
                 message = "Repository error: \(error)"
             }
         }

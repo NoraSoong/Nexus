@@ -151,6 +151,37 @@ final class ContextBindingStoreTests: XCTestCase {
         XCTAssertEqual(try fixture.store.workspaceBinding(path: worktree.path)?.taskID, task.id)
     }
 
+    func testWorkspaceAssociationReportsActionableReasons() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let task = try fixture.store.createTask(title: "Requirement", goal: "")
+        let otherTask = try fixture.store.createTask(title: "Other", goal: "")
+        let workspace = try fixture.makeWorkspace("workspace")
+        let plainDirectory = try fixture.makeWorkspace("plain", initializeGit: false)
+        let missingPath = fixture.directory.appendingPathComponent("missing").path
+
+        XCTAssertThrowsError(try fixture.store.setRepository(taskID: task.id, path: plainDirectory.path)) { error in
+            XCTAssertEqual(error as? WorkspaceAssociationError, .notGitWorkspace(plainDirectory.path))
+        }
+        XCTAssertThrowsError(try fixture.store.setRepository(taskID: task.id, path: missingPath)) {
+            error in
+            XCTAssertEqual(
+                error as? WorkspaceAssociationError,
+                .pathUnavailable(missingPath)
+            )
+        }
+
+        try fixture.store.setRepository(taskID: task.id, path: workspace.path)
+        try fixture.store.setRepository(taskID: task.id, path: workspace.path)
+        XCTAssertThrowsError(try fixture.store.setRepository(taskID: otherTask.id, path: workspace.path)) { error in
+            XCTAssertEqual(
+                error as? WorkspaceAssociationError,
+                .alreadyBound(path: workspace.path, taskID: task.id)
+            )
+        }
+        XCTAssertEqual(try fixture.store.workspaceBinding(path: workspace.path)?.taskID, task.id)
+    }
+
     private func makeFixture() throws -> Fixture {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
