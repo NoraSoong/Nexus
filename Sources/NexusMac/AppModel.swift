@@ -80,6 +80,7 @@ final class AppModel: ObservableObject {
     @Published var showNewTaskSheet = false
     @Published var showQuickSwitcher = false
     @Published var showAddTextMaterialSheet = false
+    @Published var showContextModelSettings = false
     @Published var newTextMaterialTitle = ""
     @Published var newTextMaterialBody = ""
     @Published var newTextMaterialVisible = true
@@ -272,6 +273,11 @@ final class AppModel: ObservableObject {
     var contextPreparationError: String {
         get { contextPreparation.error }
         set { updateContextPreparation(\.error, to: newValue) }
+    }
+
+    var contextPreparationDiagnostic: String {
+        get { contextPreparation.diagnostic }
+        set { updateContextPreparation(\.diagnostic, to: newValue) }
     }
 
     var contextAPIKeyInput: String {

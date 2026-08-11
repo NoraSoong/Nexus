@@ -29,6 +29,10 @@ struct ContextPreparationView: View {
                 model.cancelContextPreparationRequest()
             }
         }
+        .sheet(isPresented: $model.showContextModelSettings) {
+            ContextModelSettingsView(model: model)
+                .frame(width: 480, height: 380)
+        }
     }
 
     private var loadingSources: some View {
@@ -47,7 +51,7 @@ struct ContextPreparationView: View {
             sheetHeader(title: l10n.contextPreparationTitle, description: l10n.contextPreparationDescription)
             Divider()
             VStack(alignment: .leading, spacing: 14) {
-                modelConnection
+                modelConnectionSummary
                 errorMessage
                 sourceSelectionHeader
             }
@@ -176,85 +180,27 @@ struct ContextPreparationView: View {
         .padding(22)
     }
 
-    private var modelConnection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if model.hasContextAPIKey {
-                HStack(spacing: 10) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(l10n.contextModelConnection(model.contextModelConfiguration))
-                            .font(.callout.weight(.semibold))
-                        Text(l10n.connectionVerified)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Menu {
-                        Button {
-                            model.beginContextModelKeyReplacement()
-                        } label: {
-                            Label(l10n.changeContextModel, systemImage: "key")
-                        }
-                        Button {
-                            model.verifyContextAPIKey()
-                        } label: {
-                            Label(l10n.verifyConnection, systemImage: "checkmark.circle")
-                        }
-                        Divider()
-                        providerMenuItems
-                        Divider()
-                        Button(role: .destructive) {
-                            model.removeContextAPIKey()
-                        } label: {
-                            Label(l10n.removeAPIKey, systemImage: "trash")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                    .menuStyle(.borderlessButton)
-                }
-            } else {
-                VStack(alignment: .leading, spacing: 9) {
-                    Text(l10n.contextAPIKeyTitle)
-                        .font(.headline)
-                    Picker("", selection: providerBinding) {
-                        ForEach(ContextModelProvider.allCases) { provider in
-                            Text(provider.displayName).tag(provider)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-
-                    HStack(spacing: 8) {
-                        SecureField(
-                            l10n.contextAPIKeyPlaceholder(model.contextModelProvider),
-                            text: $model.contextAPIKeyInput
-                        )
-                        .textFieldStyle(.roundedBorder)
-                        .help(l10n.contextAPIKeyDescription)
-                        Button(l10n.connectContextModel) {
-                            model.connectContextModel()
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(
-                            model.contextAPIKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                || model.contextAPIKeyStatus == l10n.verifying
-                        )
-                    }
-                }
-            }
-            Text(l10n.contextModelDataNotice(model.contextModelProvider))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            if !model.contextAPIKeyStatus.isEmpty,
-                model.contextAPIKeyStatus != l10n.connectionVerified
-            {
-                Text(model.contextAPIKeyStatus)
+    private var modelConnectionSummary: some View {
+        HStack(spacing: 10) {
+            Image(systemName: model.hasContextAPIKey ? "checkmark.circle.fill" : "circle.dashed")
+                .foregroundStyle(model.hasContextAPIKey ? .green : .secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(
+                    model.hasContextAPIKey
+                        ? l10n.contextModelConnection(model.contextModelConfiguration)
+                        : l10n.contextModelNotConnected
+                )
+                .font(.callout.weight(.semibold))
+                Text(l10n.contextModelDataNotice(model.contextModelProvider))
                     .font(.caption)
-                    .foregroundStyle(contextConnectionStatusColor)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            Spacer()
+            Button(model.hasContextAPIKey ? l10n.manageContextModel : l10n.connectContextModel) {
+                model.showContextModelSettings = true
+            }
+            .buttonStyle(.bordered)
         }
         .padding(13)
         .background(Color.secondary.opacity(0.045))
@@ -670,37 +616,6 @@ struct ContextPreparationView: View {
                 }
             }
         )
-    }
-
-    private var providerBinding: Binding<ContextModelProvider> {
-        Binding(
-            get: { model.contextModelProvider },
-            set: { model.selectContextModelProvider($0) }
-        )
-    }
-
-    private var contextConnectionStatusColor: Color {
-        if model.hasContextAPIKey
-            || model.contextAPIKeyStatus == l10n.verifying
-            || model.contextAPIKeyStatus == l10n.contextAPIKeyRemoved
-        {
-            return .secondary
-        }
-        return .red
-    }
-
-    @ViewBuilder
-    private var providerMenuItems: some View {
-        ForEach(ContextModelProvider.allCases) { provider in
-            Button {
-                model.selectContextModelProvider(provider)
-            } label: {
-                Label(
-                    provider.displayName,
-                    systemImage: provider == model.contextModelProvider ? "checkmark" : "circle"
-                )
-            }
-        }
     }
 
     private func selectedCharacterCount(_ input: ContextPreparationInput) -> Int {

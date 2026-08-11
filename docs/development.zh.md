@@ -11,7 +11,11 @@
 - npm。
 - Git。
 
-普通使用不需要模型 API Key；只有用户主动触发“整理当前工作”时才需要 DeepSeek 或 OpenAI Key。请通过 App 连接，使其进入对应提供商的 macOS 钥匙串 account；不要把 Key 写入环境文件、SQLite、测试数据或代码仓。
+普通使用不需要模型 API Key；只有用户主动触发“整理当前工作”时才需要 DeepSeek 或 OpenAI Key。请通过 App 的整理服务设置连接；实现层会把凭据放在对应服务商的 macOS 钥匙串 account 中。不要把 Key 写入环境文件、SQLite、测试数据或代码仓。整理主流程只显示连接状态和设置入口，不向用户强调钥匙串术语。
+
+模型 Prompt 使用本次请求内的短来源引用，例如 `S1`、`S2`。Nexus 会在本地还原为真实来源 ID；为兼容旧草稿仍接受精确真实 ID，但不接受标题、路径、文件名或未知引用。
+
+工作区路径采用一对一关联。同一个仓库可以有多个 worktree，每个 worktree 可以关联不同 Work。关联失败必须保留原绑定，并通过类型化的 `WorkspaceAssociationError` 向界面提供明确原因。
 
 MCP Helper 的依赖通过 `adapters/mcp/package-lock.json` 固定。Helper 不应使用浮动依赖版本。
 

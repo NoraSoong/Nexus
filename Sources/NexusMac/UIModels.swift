@@ -24,6 +24,7 @@ final class ContextPreparationModel {
     var draftBrief = ""
     var questionAnswers: [String: String] = [:]
     var error = ""
+    var diagnostic = ""
     var apiKeyInput = ""
     var apiKeyStatus = ""
     var hasAPIKey = false

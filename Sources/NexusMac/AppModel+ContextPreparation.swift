@@ -13,6 +13,7 @@ extension AppModel {
         contextPreparationTask?.cancel()
         contextPreparationModelOverride = nil
         contextPreparationError = ""
+        contextPreparationDiagnostic = ""
         contextPreparationPhase = .loadingSources
         showContextPreparationSheet = true
         contextPreparationTask = Task { @MainActor [weak self] in
@@ -35,6 +36,7 @@ extension AppModel {
             } catch is CancellationError {
                 showContextPreparationSheet = false
             } catch {
+                contextPreparationDiagnostic = error.localizedDescription
                 contextPreparationError = l10n.contextPreparationErrorMessage(error)
                 contextPreparationPhase = .preflight
             }
@@ -194,6 +196,7 @@ extension AppModel {
                 answers: contextQuestionAnswers
             )
             contextPreparationError = ""
+            contextPreparationDiagnostic = ""
             contextPreparationPhase = .preparing
             let client = ContextModelClientFactory.make(configuration: contextModelConfiguration)
             let oldDraftID = contextDraft?.id
@@ -229,11 +232,13 @@ extension AppModel {
                         contextPreparationPhase = contextDraft == nil ? .preflight : .review
                         return
                     }
+                    contextPreparationDiagnostic = error.localizedDescription
                     contextPreparationError = l10n.contextPreparationErrorMessage(error)
                     contextPreparationPhase = .preflight
                 }
             }
         } catch {
+            contextPreparationDiagnostic = error.localizedDescription
             contextPreparationError = l10n.contextPreparationErrorMessage(error)
         }
     }
@@ -298,10 +303,12 @@ extension AppModel {
                 } catch is CancellationError {
                     return
                 } catch {
+                    contextPreparationDiagnostic = error.localizedDescription
                     contextPreparationError = l10n.contextPreparationErrorMessage(error)
                 }
             }
         } catch {
+            contextPreparationDiagnostic = error.localizedDescription
             contextPreparationError = l10n.contextPreparationErrorMessage(error)
         }
     }

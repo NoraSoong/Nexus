@@ -11,7 +11,11 @@ Run the commands below from the repository root unless a command changes directo
 - npm.
 - Git.
 
-A DeepSeek or OpenAI API key is optional for normal app use and required only for the user-triggered `Prepare Current Work` flow. Connect it through the app so it remains in the provider-specific macOS Keychain account; do not add it to environment files, SQLite, fixtures, or source control.
+A DeepSeek or OpenAI API key is optional for normal app use and required only for the user-triggered `Prepare Current Work` flow. Connect it through the app's preparation service settings; the implementation stores it in the provider-specific macOS Keychain account. Do not add it to environment files, SQLite, fixtures, or source control. The main preparation sheet should only expose connection status and a settings entry, not Keychain terminology.
+
+Model prompts use short, request-local source citations such as `S1` and `S2`. Nexus resolves them back to the real source IDs locally, accepts exact legacy IDs for compatibility, and rejects titles, paths, filenames, or unknown citations.
+
+Workspace association is intentionally one-to-one by normalized workspace path. A repository may have multiple worktrees, and each worktree may be associated with a different Work. Association failures must preserve existing bindings and surface a typed `WorkspaceAssociationError` to the UI.
 
 The MCP helper is pinned through `adapters/mcp/package-lock.json`. Do not use floating dependency versions for the helper.
 

@@ -272,8 +272,14 @@ struct L10n {
             ? "材料在草稿生成后发生了变化，请重新整理。"
             : "Materials changed after this draft was prepared. Prepare it again before approval."
     }
-    var contextAPIKeyTitle: String { zh ? "整理模型" : "Preparation model" }
-    var contextAPIKeyDescription: String { zh ? "Key 仅保存在这台 Mac 的钥匙串中。" : "The key stays in this Mac's Keychain." }
+    var contextAPIKeyTitle: String { zh ? "整理服务" : "Preparation service" }
+    var contextModelSettingsTitle: String { zh ? "整理服务设置" : "Preparation service settings" }
+    var contextModelNotConnected: String { zh ? "尚未连接整理服务" : "No preparation service connected" }
+    var manageContextModel: String { zh ? "设置" : "Settings" }
+    var preparationDiagnostic: String { zh ? "整理诊断" : "Preparation diagnostic" }
+    var contextAPIKeyDescription: String {
+        zh ? "凭据仅保存在本机，用于你主动发起的整理请求。" : "Credentials stay on this Mac and are used only for preparation requests you start."
+    }
     var connectContextModel: String { zh ? "连接" : "Connect" }
     var changeContextModel: String { zh ? "更换连接" : "Change Connection" }
     var removeAPIKey: String { zh ? "移除 Key" : "Remove Key" }
@@ -282,6 +288,33 @@ struct L10n {
     var contextAPIKeyRequired: String { zh ? "请输入当前服务商的 API Key" : "Enter an API key for the selected provider" }
     var verifying: String { zh ? "正在验证…" : "Verifying…" }
     var connectionVerified: String { zh ? "连接可用" : "Connection verified" }
+
+    func workspaceAssociationErrorMessage(_ error: Error, existingWorkTitle: String? = nil) -> String {
+        guard let associationError = error as? WorkspaceAssociationError else {
+            return zh ? "工作区关联失败，请稍后重试。" : "The workspace could not be linked. Try again."
+        }
+        switch associationError {
+        case .notGitWorkspace:
+            return zh
+                ? "这个目录不是 Git 工作区，请选择仓库目录或现有 worktree。"
+                : "This directory is not a Git workspace. Choose a repository or existing worktree."
+        case .alreadyBound, .alreadyLinked:
+            let title = existingWorkTitle ?? (zh ? "其他 Work" : "another Work")
+            return zh
+                ? "这个工作区已关联到「\(title)」。如果要并行处理，请选择另一个 worktree。"
+                : "This workspace is already linked to \(title). Choose another worktree for parallel work."
+        case .pathUnavailable:
+            return zh
+                ? "无法读取这个工作区，请确认目录仍然存在。"
+                : "This workspace is unavailable. Check that the directory still exists."
+        case .taskNotFound:
+            return zh ? "当前 Work 不存在，无法关联工作区。" : "The selected Work no longer exists."
+        case .persistence:
+            return zh
+                ? "工作区关联未保存，现有绑定没有改变。"
+                : "The workspace link was not saved. Existing bindings were unchanged."
+        }
+    }
     var noSnapshotYet: String { zh ? "还没有快照" : "No snapshot yet" }
     var recentHandoffs: String { zh ? "历史快照" : "Snapshot History" }
     var rename: String { zh ? "重命名" : "Rename" }
@@ -428,8 +461,6 @@ struct L10n {
     var removeFailed: String { zh ? "移除失败" : "Remove failed" }
     var addTitleAndBody: String { zh ? "请填写正文" : "Add body text" }
     var addTextFailed: String { zh ? "添加文本失败" : "Add text failed" }
-    var repositoryFailed: String { zh ? "项目关联失败" : "Repository failed" }
-    var relinkFailed: String { zh ? "分支绑定失败" : "Relink failed" }
     var previewFailed: String { zh ? "预览失败" : "Preview failed" }
     var assistantContextFailed: String { zh ? "助手上下文更新失败" : "Assistant Context failed" }
     var archiveFailed: String { zh ? "归档失败" : "Archive failed" }
@@ -649,6 +680,17 @@ struct L10n {
                 return zh
                     ? "整理结果没有通过来源校验（\(detail)），未保存草稿。"
                     : "The draft failed source validation (\(detail)). No draft was saved."
+            case .invalidSourceCitation(let failure):
+                switch failure {
+                case .missingRequiredSource:
+                    return zh
+                        ? "模型没有为部分确定内容标注来源，结果未保存。请重试。"
+                        : "The model left some confirmed content uncited. No draft was saved. Try again."
+                case .unknownSources, .unknownRecommendedSources:
+                    return zh
+                        ? "模型引用了本次未发送的材料，结果未保存。请重试或减少材料。"
+                        : "The model cited material that was not sent. No draft was saved. Try again or reduce the materials."
+                }
             case .staleDraft:
                 return contextDraftOutdated
             case .draftNotFound:

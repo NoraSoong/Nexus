@@ -911,6 +911,13 @@ struct NexusMainView: View {
                             Text(model.diagnosticManifest)
                                 .font(.system(.caption, design: .monospaced))
                                 .textSelection(.enabled)
+                            if !model.contextPreparationDiagnostic.isEmpty {
+                                Text(l10n.preparationDiagnostic)
+                                    .font(.caption.weight(.semibold))
+                                Text(model.contextPreparationDiagnostic)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .textSelection(.enabled)
+                            }
                         }
                         .padding(.top, 6)
                     } label: {

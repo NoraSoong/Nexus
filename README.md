@@ -45,12 +45,14 @@ Model output is always a draft. It affects MCP only after explicit approval.
 - local files and pasted text with per-material assistant visibility;
 - streamed UTF-8 and UTF-16 text extraction with per-source budgets and a 64 MiB hard safety limit;
 - DeepSeek and OpenAI preparation with provider-specific keys in macOS Keychain;
+- per-request short source citations (`S1`, `S2`, ...) that Nexus resolves back to immutable source IDs before saving;
 - one automatic compact retry when a model reaches its output limit;
 - source-backed objectives, scope, facts, constraints, acceptance criteria, assumptions, and questions;
 - Context Pack review, diff, approval, and source-change freshness;
 - Git repository, branch, and existing worktree association, plus commit and working-tree activity since the confirmed baseline;
 - separate material freshness and code activity, so ordinary coding does not make requirement context stale;
 - workspace bindings that pin different worktrees from one repository to different Work items;
+- explicit workspace association errors that explain when to choose another worktree;
 - read-only stdio MCP Helper with layered confirmed context, source freshness, workspace activity, and streamed paginated material reads;
 - no Nexus tools while the app is not running or assistant access is paused.
 
@@ -163,6 +165,7 @@ Legacy fine-grained tools remain for compatibility. Assistants should not call N
 - MCP is currently read-only;
 - hidden materials cannot be read through MCP;
 - model calls require an explicit user action;
+- model credentials are managed through a small in-app connection panel and stay local to this Mac;
 - API keys are not stored in SQLite or exposed through MCP;
 - failed, cancelled, or unapproved drafts never change the current Context Pack;
 - empty, binary, invalidly encoded, unsupported, and oversized files are excluded with distinct reasons;
