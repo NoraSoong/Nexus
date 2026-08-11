@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { readSupportedTextFile } from "../textFilePolicy.js";
+import { readSupportedTextFilePage } from "../textFilePolicy.js";
 
 const runtimeStaleMs = 15_000;
 const supportedProjectionSchemaVersions = new Set(["1", "2"]);
@@ -375,11 +375,7 @@ export class ProjectionDatabase {
       if (!stat.isFile()) {
         throw new Error(`Path is not a regular file: ${file.path}`);
       }
-      const body = readSupportedTextFile(file.path);
-      const chunk = body.slice(clampedOffset, clampedOffset + clampedLimit);
-      const nextOffset = clampedOffset + chunk.length < body.length
-        ? clampedOffset + chunk.length
-        : null;
+      const page = readSupportedTextFilePage(file.path, clampedOffset, clampedLimit);
       return {
         work_id: file.task_id,
         task_id: file.task_id,
@@ -389,15 +385,15 @@ export class ProjectionDatabase {
         path: file.path,
         file_type: file.file_type,
         binding,
-        offset: clampedOffset,
+        offset: page.offset,
         limit: clampedLimit,
-        next_cursor: nextOffset === null ? null : {
+        next_cursor: page.nextOffset === null ? null : {
           task_id: file.task_id,
           file_id: file.file_id,
           revision: file.revision,
-          offset: nextOffset
+          offset: page.nextOffset
         },
-        body: chunk
+        body: page.body
       };
     } finally {
       db.close();

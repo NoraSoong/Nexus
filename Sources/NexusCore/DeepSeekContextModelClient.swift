@@ -22,7 +22,11 @@ public final class DeepSeekContextModelClient: ContextModelClient, @unchecked Se
     public func generate(request: ContextModelRequest, apiKey: String) async throws -> ContextPackContent {
         for attempt in 0..<2 {
             do {
-                return try await generateOnce(request: request, apiKey: apiKey)
+                return try await generateOnce(
+                    request: request,
+                    apiKey: apiKey,
+                    compactOutput: attempt > 0
+                )
             } catch {
                 guard attempt == 0, shouldRetry(error) else { throw error }
             }
@@ -57,10 +61,11 @@ public final class DeepSeekContextModelClient: ContextModelClient, @unchecked Se
 
     private func generateOnce(
         request: ContextModelRequest,
-        apiKey: String
+        apiKey: String,
+        compactOutput: Bool
     ) async throws -> ContextPackContent {
         let data = try await performRequest(
-            body: try requestBody(for: request),
+            body: try requestBody(for: request, compactOutput: compactOutput),
             apiKey: apiKey
         )
         let output = try extractOutputText(from: data)
@@ -103,13 +108,19 @@ public final class DeepSeekContextModelClient: ContextModelClient, @unchecked Se
         return data
     }
 
-    private func requestBody(for request: ContextModelRequest) throws -> [String: Any] {
+    private func requestBody(
+        for request: ContextModelRequest,
+        compactOutput: Bool
+    ) throws -> [String: Any] {
         [
             "model": configuration.model,
             "messages": [
                 [
                     "role": "system",
-                    "content": ContextModelPrompt.systemPrompt(language: request.language),
+                    "content": ContextModelPrompt.systemPrompt(
+                        language: request.language,
+                        compactOutput: compactOutput
+                    ),
                 ],
                 [
                     "role": "user",
@@ -175,7 +186,8 @@ public final class DeepSeekContextModelClient: ContextModelClient, @unchecked Se
             return false
         }
         switch modelError {
-        case .emptyResponse(.deepSeek), .invalidResponse(.deepSeek, _):
+        case .emptyResponse(.deepSeek), .invalidResponse(.deepSeek, _),
+            .outputTruncated(.deepSeek):
             return true
         default:
             return false

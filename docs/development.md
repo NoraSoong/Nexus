@@ -112,7 +112,9 @@ The stdio regression checks that:
 - server instructions tell MCP clients not to call Nexus by default when the current conversation already has enough context.
 - v1 fallback and v2 Context Pack projections remain readable during migration.
 - the main context has no duplicate legacy wrappers and stays within its 24,000-character budget.
-- binary and unsupported files are rejected instead of returned as garbled text.
+- UTF-8 and UTF-16 pagination preserves character boundaries;
+- binary, unsupported, invalidly encoded, and oversized files are rejected instead of returned as garbled text;
+- source reads are capped at 64 MiB and do not load a complete file into memory.
 
 The regression sets `NEXUS_MCP_ALLOW_HEADLESS=1` because it runs without the Mac app. Product MCP clients must not set this variable; without it, the helper only returns context while the Nexus Mac app heartbeat is fresh and assistant access is enabled.
 

@@ -118,7 +118,20 @@ public enum ContextMaterialExtractor {
                     ContextSourceExclusion(id: id, title: file.displayName, path: file.path, reason: .unsupportedType))
                 continue
             }
-            guard let content = decodedString(at: url) else {
+            let capture: TextMaterialCapture
+            do {
+                capture = try TextMaterialReader.capture(at: url, characterLimit: perSourceCharacterLimit)
+            } catch let error as TextMaterialReadError {
+                excluded.append(
+                    ContextSourceExclusion(
+                        id: id,
+                        title: file.displayName,
+                        path: file.path,
+                        reason: exclusionReason(for: error)
+                    )
+                )
+                continue
+            } catch {
                 excluded.append(
                     ContextSourceExclusion(id: id, title: file.displayName, path: file.path, reason: .unreadable))
                 continue
@@ -130,7 +143,10 @@ public enum ContextMaterialExtractor {
                     title: file.displayName,
                     path: file.path,
                     updatedAt: file.modifiedAt,
-                    content: content
+                    content: capture.content,
+                    contentHash: capture.contentHash,
+                    characterCount: capture.characterCount,
+                    truncated: capture.truncated
                 )
             )
         }
@@ -172,7 +188,7 @@ public enum ContextMaterialExtractor {
                         id: candidate.id, title: candidate.title, path: candidate.path, reason: .budgetExceeded))
                 continue
             }
-            let fullCount = candidate.content.count
+            let fullCount = candidate.characterCount ?? candidate.content.count
             let isGitActivity = Self.isGitActivityKind(candidate.kind)
             let sourceLimit = candidate.characterLimit ?? perSourceCharacterLimit
             let allowed =
@@ -198,10 +214,10 @@ public enum ContextMaterialExtractor {
                 title: candidate.title,
                 path: candidate.path,
                 updatedAt: candidate.updatedAt,
-                contentHash: sha256(candidate.content),
+                contentHash: candidate.contentHash ?? sha256(candidate.content),
                 characterCount: fullCount,
                 includedCharacterCount: includedCount,
-                truncated: includedCount < fullCount,
+                truncated: candidate.truncated || includedCount < candidate.content.count,
                 fingerprintVersion: candidate.kind == "repository" ? repositoryFingerprintVersion : nil
             )
             sources.append(ContextSourceDocument(reference: reference, content: included))
@@ -244,6 +260,9 @@ public enum ContextMaterialExtractor {
         let updatedAt: String
         let content: String
         let characterLimit: Int?
+        let contentHash: String?
+        let characterCount: Int?
+        let truncated: Bool
 
         init(
             id: String,
@@ -252,7 +271,10 @@ public enum ContextMaterialExtractor {
             path: String?,
             updatedAt: String,
             content: String,
-            characterLimit: Int? = nil
+            characterLimit: Int? = nil,
+            contentHash: String? = nil,
+            characterCount: Int? = nil,
+            truncated: Bool = false
         ) {
             self.id = id
             self.kind = kind
@@ -261,20 +283,27 @@ public enum ContextMaterialExtractor {
             self.updatedAt = updatedAt
             self.content = content
             self.characterLimit = characterLimit
+            self.contentHash = contentHash
+            self.characterCount = characterCount
+            self.truncated = truncated
         }
     }
 
-    private static func decodedString(at url: URL) -> String? {
-        guard let data = try? Data(contentsOf: url), !data.isEmpty else { return nil }
-        if data.prefix(min(data.count, 8_192)).contains(0) {
-            return nil
+    private static func exclusionReason(for error: TextMaterialReadError) -> ContextSourceExclusionReason {
+        switch error {
+        case .empty:
+            return .empty
+        case .tooLarge:
+            return .tooLarge
+        case .binary:
+            return .binary
+        case .invalidEncoding:
+            return .invalidEncoding
+        case .changedDuringRead:
+            return .changedDuringRead
+        case .unreadable:
+            return .unreadable
         }
-        for encoding in [String.Encoding.utf8, .utf16, .utf16LittleEndian, .utf16BigEndian] {
-            if let value = String(data: data, encoding: encoding) {
-                return value
-            }
-        }
-        return nil
     }
 
     private static func truncate(_ text: String, limit: Int) -> String {

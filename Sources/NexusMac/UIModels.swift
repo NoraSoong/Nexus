@@ -14,7 +14,8 @@ enum SaveState: Equatable {
     case failed
 }
 
-struct ContextPreparationUIState {
+@MainActor
+final class ContextPreparationModel {
     var phase: ContextPreparationPhase = .preflight
     var input: ContextPreparationInput?
     var selectedSourceIDs: Set<String> = []
@@ -28,6 +29,30 @@ struct ContextPreparationUIState {
     var hasAPIKey = false
     var modelProvider = storedContextModelProvider()
     var modelOverride: String?
+
+    func comparison(to currentPack: ContextPack?) -> ContextPackDiff? {
+        guard let candidate = candidateContent else { return nil }
+        return ContextReviewService.compare(
+            candidate: candidate,
+            candidateSources: draft?.sourceManifest ?? [],
+            baseline: currentPack
+        )
+    }
+
+    func findings(currentPack: ContextPack?) -> [ContextReviewFinding] {
+        guard let candidate = candidateContent else { return [] }
+        return ContextReviewService.findings(
+            content: candidate,
+            sources: draft?.sourceManifest ?? [],
+            sourceChanges: comparison(to: currentPack)?.sourceChanges ?? []
+        )
+    }
+
+    private var candidateContent: ContextPackContent? {
+        guard var content = draft?.content else { return nil }
+        content.brief = draftBrief.trimmingCharacters(in: .whitespacesAndNewlines)
+        return content
+    }
 }
 
 struct AssistantConnectionUIState {

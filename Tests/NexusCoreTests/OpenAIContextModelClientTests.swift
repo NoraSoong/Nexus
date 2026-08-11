@@ -6,6 +6,7 @@ import XCTest
 final class OpenAIContextModelClientTests: XCTestCase {
     override func tearDown() {
         StubURLProtocol.handler = nil
+        StubURLProtocol.requestCount = 0
         super.tearDown()
     }
 
@@ -51,6 +52,7 @@ final class OpenAIContextModelClientTests: XCTestCase {
             apiKey: "test-key"
         )
         XCTAssertEqual(result.brief, "Concise brief")
+        XCTAssertEqual(StubURLProtocol.requestCount, 1)
     }
 
     func testUnauthorizedResponseMapsToInvalidAPIKey() async throws {
@@ -170,6 +172,43 @@ final class OpenAIContextModelClientTests: XCTestCase {
         } catch {
             XCTAssertEqual((error as? URLError)?.code, .timedOut)
         }
+        XCTAssertEqual(StubURLProtocol.requestCount, 1)
+    }
+
+    func testOutputLimitRetriesWithCompactPrompt() async throws {
+        let source = sourceDocument()
+        StubURLProtocol.handler = { request in
+            if StubURLProtocol.requestCount == 1 {
+                return try self.incompleteResponse(request: request)
+            }
+            let body = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: try self.requestBodyData(request)) as? [String: Any]
+            )
+            let input = try XCTUnwrap(body["input"] as? [[String: Any]])
+            let systemPrompt = try XCTUnwrap(input.first?["content"] as? String)
+            XCTAssertTrue(systemPrompt.contains("compact retry"))
+            return try self.successResponse(
+                request: request,
+                content: self.validContent(sourceID: source.id)
+            )
+        }
+
+        let result = try await makeClient().generate(
+            request: ContextModelRequest(taskID: "task", language: "English", sources: [source]),
+            apiKey: "test-key"
+        )
+
+        XCTAssertEqual(result.objective, "Objective")
+        XCTAssertEqual(StubURLProtocol.requestCount, 2)
+    }
+
+    func testRepeatedOutputLimitFailsAfterCompactRetry() async throws {
+        StubURLProtocol.handler = { request in
+            try self.incompleteResponse(request: request)
+        }
+
+        await assertModelError(.outputTruncated(.openAI))
+        XCTAssertEqual(StubURLProtocol.requestCount, 2)
     }
 
     func testEmptyAssumptionIsRejected() {
@@ -226,6 +265,34 @@ final class OpenAIContextModelClientTests: XCTestCase {
         )
     }
 
+    private func successResponse(
+        request: URLRequest,
+        content: ContextPackContent
+    ) throws -> (HTTPURLResponse, Data) {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let output = String(data: try encoder.encode(content), encoding: .utf8)!
+        let response: [String: Any] = [
+            "output": [["type": "message", "content": [["type": "output_text", "text": output]]]]
+        ]
+        return (
+            HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+            try JSONSerialization.data(withJSONObject: response)
+        )
+    }
+
+    private func incompleteResponse(request: URLRequest) throws -> (HTTPURLResponse, Data) {
+        let response: [String: Any] = [
+            "status": "incomplete",
+            "incomplete_details": ["reason": "max_output_tokens"],
+            "output": [],
+        ]
+        return (
+            HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+            try JSONSerialization.data(withJSONObject: response)
+        )
+    }
+
     private func stubSession() -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [StubURLProtocol.self]
@@ -252,11 +319,13 @@ final class OpenAIContextModelClientTests: XCTestCase {
 
 private final class StubURLProtocol: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+    nonisolated(unsafe) static var requestCount = 0
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
+        Self.requestCount += 1
         guard let handler = Self.handler else {
             client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
             return

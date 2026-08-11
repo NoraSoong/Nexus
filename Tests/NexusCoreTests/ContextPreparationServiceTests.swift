@@ -85,6 +85,34 @@ final class ContextPreparationServiceTests: XCTestCase {
         )
     }
 
+    func testAnsweredQuestionIsNotRepeatedWithANewModelID() {
+        let previousQuestion = ContextQuestion(
+            id: "cancel-idempotency",
+            question: "取消预约是否要求幂等？",
+            whyItMatters: "Affects API behavior",
+            sourceIDs: ["source"]
+        )
+        let repeatedQuestion = ContextQuestion(
+            id: "question-2",
+            question: "  取消预约是否要求幂等?  ",
+            whyItMatters: "Affects API behavior",
+            sourceIDs: ["source"]
+        )
+
+        let resolved = ContextPreparationService.resolvingClarificationAnswers(
+            in: makeContent(questions: [repeatedQuestion]),
+            previousDraft: makeContent(questions: [previousQuestion]),
+            answers: [previousQuestion.id: "要求幂等"]
+        )
+
+        XCTAssertTrue(resolved.questions.isEmpty)
+        XCTAssertEqual(resolved.confirmedFacts.count, 1)
+        XCTAssertEqual(
+            resolved.confirmedFacts[0].sourceIDs,
+            ["clarification:cancel-idempotency"]
+        )
+    }
+
     func testApprovedConfirmationIsPreservedInNextDraft() {
         let sourceID = "clarification:cancel-idempotency"
         var previous = makeContent()

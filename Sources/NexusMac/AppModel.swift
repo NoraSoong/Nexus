@@ -84,7 +84,7 @@ final class AppModel: ObservableObject {
     @Published var newTextMaterialBody = ""
     @Published var newTextMaterialVisible = true
     @Published var showContextPreparationSheet = false
-    @Published var contextPreparation = ContextPreparationUIState()
+    let contextPreparation = ContextPreparationModel()
     @Published var currentContextPack: ContextPack?
     @Published var currentContextSourceChanges: [ContextSourceDelta] = []
     @Published var currentGitActivity: GitActivitySnapshot?
@@ -236,67 +236,67 @@ final class AppModel: ObservableObject {
 
     var contextPreparationPhase: ContextPreparationPhase {
         get { contextPreparation.phase }
-        set { contextPreparation.phase = newValue }
+        set { updateContextPreparation(\.phase, to: newValue) }
     }
 
     var contextPreparationInput: ContextPreparationInput? {
         get { contextPreparation.input }
-        set { contextPreparation.input = newValue }
+        set { updateContextPreparation(\.input, to: newValue) }
     }
 
     var selectedContextSourceIDs: Set<String> {
         get { contextPreparation.selectedSourceIDs }
-        set { contextPreparation.selectedSourceIDs = newValue }
+        set { updateContextPreparation(\.selectedSourceIDs, to: newValue) }
     }
 
     var contextDraft: ContextDraft? {
         get { contextPreparation.draft }
-        set { contextPreparation.draft = newValue }
+        set { updateContextPreparation(\.draft, to: newValue) }
     }
 
     var contextDraftBaseline: ContextPackContent? {
         get { contextPreparation.draftBaseline }
-        set { contextPreparation.draftBaseline = newValue }
+        set { updateContextPreparation(\.draftBaseline, to: newValue) }
     }
 
     var contextDraftBrief: String {
         get { contextPreparation.draftBrief }
-        set { contextPreparation.draftBrief = newValue }
+        set { updateContextPreparation(\.draftBrief, to: newValue) }
     }
 
     var contextQuestionAnswers: [String: String] {
         get { contextPreparation.questionAnswers }
-        set { contextPreparation.questionAnswers = newValue }
+        set { updateContextPreparation(\.questionAnswers, to: newValue) }
     }
 
     var contextPreparationError: String {
         get { contextPreparation.error }
-        set { contextPreparation.error = newValue }
+        set { updateContextPreparation(\.error, to: newValue) }
     }
 
     var contextAPIKeyInput: String {
         get { contextPreparation.apiKeyInput }
-        set { contextPreparation.apiKeyInput = newValue }
+        set { updateContextPreparation(\.apiKeyInput, to: newValue) }
     }
 
     var contextAPIKeyStatus: String {
         get { contextPreparation.apiKeyStatus }
-        set { contextPreparation.apiKeyStatus = newValue }
+        set { updateContextPreparation(\.apiKeyStatus, to: newValue) }
     }
 
     var hasContextAPIKey: Bool {
         get { contextPreparation.hasAPIKey }
-        set { contextPreparation.hasAPIKey = newValue }
+        set { updateContextPreparation(\.hasAPIKey, to: newValue) }
     }
 
     var contextModelProvider: ContextModelProvider {
         get { contextPreparation.modelProvider }
-        set { contextPreparation.modelProvider = newValue }
+        set { updateContextPreparation(\.modelProvider, to: newValue) }
     }
 
     var contextPreparationModelOverride: String? {
         get { contextPreparation.modelOverride }
-        set { contextPreparation.modelOverride = newValue }
+        set { updateContextPreparation(\.modelOverride, to: newValue) }
     }
 
     var hasWorkNotes: Bool {
@@ -312,25 +312,19 @@ final class AppModel: ObservableObject {
     }
 
     var preparedContextDiff: ContextPackDiff? {
-        guard let draft = contextDraft else { return nil }
-        var content = draft.content
-        content.brief = contextDraftBrief.trimmingCharacters(in: .whitespacesAndNewlines)
-        return ContextReviewService.compare(
-            candidate: content,
-            candidateSources: draft.sourceManifest,
-            baseline: currentContextPack
-        )
+        contextPreparation.comparison(to: currentContextPack)
     }
 
     var preparedContextFindings: [ContextReviewFinding] {
-        guard let draft = contextDraft else { return [] }
-        var content = draft.content
-        content.brief = contextDraftBrief.trimmingCharacters(in: .whitespacesAndNewlines)
-        return ContextReviewService.findings(
-            content: content,
-            sources: draft.sourceManifest,
-            sourceChanges: preparedContextDiff?.sourceChanges ?? []
-        )
+        contextPreparation.findings(currentPack: currentContextPack)
+    }
+
+    private func updateContextPreparation<Value>(
+        _ keyPath: ReferenceWritableKeyPath<ContextPreparationModel, Value>,
+        to value: Value
+    ) {
+        objectWillChange.send()
+        contextPreparation[keyPath: keyPath] = value
     }
 
     var currentContextNeedsReview: Bool {

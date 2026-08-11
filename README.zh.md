@@ -43,13 +43,15 @@ flowchart LR
 - 原生 SwiftUI Mac App、菜单栏入口和快速切换；
 - Work 创建、编辑、归档、恢复与删除；
 - 本地文件和粘贴文本材料，逐项控制助手可见性；
+- 以流式方式提取 UTF-8 与 UTF-16 文本，遵守单项预算和 64 MiB 硬性安全上限；
 - DeepSeek 与 OpenAI 上下文整理，API Key 分别保存在 macOS 钥匙串；
+- 模型达到输出上限时自动进行一次压缩重试；
 - 带来源的目标、范围、事实、约束、验收条件、假设和待确认问题；
 - Context Pack 审核、差异查看、采用和材料变化后的过期提示；
 - Git 仓库、分支和已有 worktree 关联，以及基于确认版本的提交与工作区变化摘要；
 - 材料新鲜度与代码活动分离：普通编码不会把需求上下文错误标记为过期；
 - workspace binding：同一仓库的不同 worktree 可固定到不同 Work；
-- 只读 stdio MCP Helper，分层返回确认上下文、材料新鲜度和工作区活动；
+- 只读 stdio MCP Helper，分层返回确认上下文、材料新鲜度、工作区活动和流式分页材料；
 - App 未运行或助手读取被暂停时，不暴露 Nexus MCP tools。
 
 Nexus 不运行编码 Agent，不替用户决定实现方案，也不自动创建、合并或删除 worktree。
@@ -163,6 +165,7 @@ codex mcp add nexus-worktree \
 - 模型调用只由用户主动触发；
 - API Key 不写入 SQLite，也不会通过 MCP 暴露；
 - 草稿失败、取消或未采用时，不改变当前 Context Pack；
+- 空文件、二进制、无效编码、不支持类型和超大文件会以不同原因排除；
 - Git 集成只读取状态、提交摘要和受预算控制的变更证据，不执行 `checkout`、`stash`、`reset` 或提交。
 
 ## 项目文档

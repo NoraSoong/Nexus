@@ -65,6 +65,7 @@ struct ContextPreparationView: View {
                 .padding(.horizontal, 22)
                 .padding(.vertical, 14)
             }
+            .id(preflightScrollIdentity)
             Divider()
             HStack {
                 Button(l10n.cancel) { dismiss() }
@@ -228,7 +229,7 @@ struct ContextPreparationView: View {
                     HStack(spacing: 8) {
                         SecureField(
                             l10n.contextAPIKeyPlaceholder(model.contextModelProvider),
-                            text: $model.contextPreparation.apiKeyInput
+                            text: $model.contextAPIKeyInput
                         )
                         .textFieldStyle(.roundedBorder)
                         .help(l10n.contextAPIKeyDescription)
@@ -270,7 +271,9 @@ struct ContextPreparationView: View {
                 Text(
                     l10n.preparationSelectionSummary(
                         count: selectedSourceCount(input),
-                        characterCount: selectedCharacterCount(input)
+                        characterCount: selectedCharacterCount(input),
+                        characterBudget: ContextMaterialExtractor.totalCharacterLimit,
+                        truncatedCount: selectedTruncatedSourceCount(input)
                     )
                 )
                 .font(.caption)
@@ -314,7 +317,7 @@ struct ContextPreparationView: View {
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, minHeight: 62, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
         } else {
             Toggle(isOn: sourceSelectionBinding(source.id)) {
                 sourceLabel(source)
@@ -322,7 +325,7 @@ struct ContextPreparationView: View {
             }
             .toggleStyle(.checkbox)
             .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, minHeight: 62, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
         }
     }
 
@@ -350,9 +353,12 @@ struct ContextPreparationView: View {
 
     private func excludedSources(_ sources: [ContextSourceExclusion]) -> some View {
         DisclosureGroup(l10n.excludedSources) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 0) {
                 ForEach(sources) { source in
-                    HStack {
+                    HStack(spacing: 12) {
+                        Image(systemName: "minus.circle")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
                         Text(source.title)
                             .lineLimit(1)
                         Spacer()
@@ -360,18 +366,21 @@ struct ContextPreparationView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    .frame(minHeight: 34)
+                    .help(source.path ?? source.title)
                 }
             }
-            .padding(.top, 8)
+            .padding(.top, 6)
         }
         .font(.callout)
+        .foregroundStyle(.secondary)
     }
 
     private var briefEditor: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(l10n.preparedBrief)
                 .font(.headline)
-            TextEditor(text: $model.contextPreparation.draftBrief)
+            TextEditor(text: $model.contextDraftBrief)
                 .font(.body)
                 .scrollContentBackground(.hidden)
                 .padding(10)
@@ -427,7 +436,7 @@ struct ContextPreparationView: View {
             VStack(alignment: .leading, spacing: 9) {
                 Label(l10n.contextReviewFindingsTitle, systemImage: "exclamationmark.triangle.fill")
                     .font(.callout.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(.orange)
                 ForEach(findings) { finding in
                     HStack(alignment: .top, spacing: 9) {
                         Image(systemName: "circle.fill")
@@ -448,13 +457,7 @@ struct ContextPreparationView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(Color.secondary.opacity(0.035))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.orange.opacity(0.16), lineWidth: 1)
-            )
+            .padding(.vertical, 4)
         }
     }
 
@@ -708,6 +711,17 @@ struct ContextPreparationView: View {
 
     private func selectedSourceCount(_ input: ContextPreparationInput) -> Int {
         input.sources.filter { model.selectedContextSourceIDs.contains($0.id) }.count
+    }
+
+    private func selectedTruncatedSourceCount(_ input: ContextPreparationInput) -> Int {
+        input.sources.filter {
+            model.selectedContextSourceIDs.contains($0.id) && $0.reference.truncated
+        }.count
+    }
+
+    private var preflightScrollIdentity: String {
+        guard let input = model.contextPreparationInput else { return "preflight-empty" }
+        return "preflight-\(input.taskID)-\(input.baseRevision)"
     }
 
     private var hasEditedDraft: Bool {

@@ -22,11 +22,11 @@ SwiftUI App 负责菜单栏、Work 导航、材料选择、审核流程和助手
 
 ### NexusCore
 
-Swift Package 负责领域类型、SQLite、材料提取、Context Pack 审核、Git 活动快照和 MCP 投影生成。它不依赖 SwiftUI，因此无需启动 App 就能测试核心行为。
+Swift Package 负责领域类型、SQLite、材料提取、Context Pack 审核、Git 活动快照和 MCP 投影生成。`ProjectionStore` 保留为兼容门面，Context Pack 持久化、Binding 持久化和投影发布由独立内部组件承担。它不依赖 SwiftUI，因此无需启动 App 就能测试核心行为。
 
 ### MCP Helper
 
-TypeScript Helper 使用 stdio 运行，并从 SQLite 读取稳定投影。它解析显式或工作区绑定、执行助手访问控制，并提供紧凑的当前上下文与按需材料读取。它不会直接查询 Core 的领域表。
+TypeScript Helper 使用 stdio 运行，并从 SQLite 读取稳定投影。它解析显式或工作区绑定、执行助手访问控制，并提供紧凑的当前上下文与可见文本材料的流式分页读取。它不会直接查询 Core 的领域表，也不会把整份来源文件一次载入内存。
 
 ## 上下文生命周期
 
@@ -36,6 +36,10 @@ TypeScript Helper 使用 stdio 运行，并从 SQLite 读取稳定投影。它�
 4. 用户审核并采用 Context Pack。
 5. Core 原子发布该 Pack 的 MCP 投影。
 6. 助手通过 MCP 读取投影，只在需要时读取可见材料原文。
+
+文本提取支持 UTF-8，以及带或不带 BOM 的 UTF-16 LE/BE。单份来源最多 40,000 字符，单次整理最多 120,000 字符，原文件硬性上限为 64 MiB；超大文件会在读取正文前排除。被截取的来源保留开头和结尾，并始终明确标记。
+
+模型达到输出上限时，Nexus 只进行一次压缩重试。认证、限流、网络、取消和拒绝错误不会重试；两次请求都必须等用户采用后才会影响 MCP。
 
 材料新鲜度与工作区活动刻意分开。代码变化只是下一次更新的证据，不会自动改写已确认的需求，也不会自动判定需求失效。
 
