@@ -25,6 +25,8 @@ final class OpenAIContextModelClientTests: XCTestCase {
             let userPrompt = try XCTUnwrap(input.last?["content"] as? String)
             XCTAssertTrue(userPrompt.contains("\"sources\""))
             XCTAssertFalse(userPrompt.contains("<source"))
+            XCTAssertTrue(userPrompt.contains("citation_id"))
+            XCTAssertFalse(userPrompt.contains(source.id))
 
             let content = self.validContent(sourceID: source.id)
             let encoder = JSONEncoder()
@@ -156,9 +158,27 @@ final class OpenAIContextModelClientTests: XCTestCase {
         } catch {
             XCTAssertEqual(
                 error as? ContextPreparationError,
-                .invalidModelOutput("a confirmed claim has missing or unknown sources")
+                .invalidSourceCitation(.unknownSources(["missing-source"]))
             )
         }
+    }
+
+    func testShortCitationIsMappedBackToRealSourceID() async throws {
+        let source = sourceDocument()
+        StubURLProtocol.handler = { request in
+            try self.successResponse(
+                request: request,
+                content: self.validContent(sourceID: "S1")
+            )
+        }
+
+        let result = try await makeClient().generate(
+            request: ContextModelRequest(taskID: "task", language: "English", sources: [source]),
+            apiKey: "test-key"
+        )
+
+        XCTAssertEqual(result.scopeIn.first?.sourceIDs, [source.id])
+        XCTAssertEqual(StubURLProtocol.requestCount, 1)
     }
 
     func testTransportTimeoutIsPropagated() async throws {

@@ -203,7 +203,7 @@ final class DeepSeekContextModelClientTests: XCTestCase {
         } catch {
             XCTAssertEqual(
                 error as? ContextPreparationError,
-                .invalidModelOutput("a confirmed claim has missing or unknown sources")
+                .invalidSourceCitation(.unknownSources(["unknown-source"]))
             )
         }
         XCTAssertEqual(DeepSeekStubURLProtocol.requestCount, 2)
