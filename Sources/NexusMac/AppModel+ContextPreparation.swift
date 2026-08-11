@@ -104,6 +104,7 @@ extension AppModel {
         contextPreparationTask?.cancel()
         contextModelProvider = provider
         contextPreparationModelOverride = nil
+        isReplacingContextModelKey = false
         UserDefaults.standard.set(provider.rawValue, forKey: contextModelProviderDefaultsKey)
         contextAPIKeyInput = ""
         contextAPIKeyStatus = ""
@@ -127,6 +128,7 @@ extension AppModel {
                 try keychainCredentialStore.saveKey(key, for: provider)
                 contextAPIKeyInput = ""
                 hasContextAPIKey = true
+                isReplacingContextModelKey = false
                 contextAPIKeyStatus = l10n.connectionVerified
                 UserDefaults.standard.set(provider.rawValue, forKey: contextModelProviderDefaultsKey)
             } catch is CancellationError {
@@ -143,7 +145,15 @@ extension AppModel {
         contextPreparationTask?.cancel()
         contextAPIKeyInput = ""
         contextAPIKeyStatus = ""
-        hasContextAPIKey = false
+        isReplacingContextModelKey = true
+    }
+
+    func cancelContextModelKeyReplacement() {
+        guard isReplacingContextModelKey else { return }
+        isReplacingContextModelKey = false
+        contextAPIKeyInput = ""
+        contextAPIKeyStatus = ""
+        hasContextAPIKey = ((try? keychainCredentialStore.loadKey(for: contextModelProvider)) ?? nil)?.isEmpty == false
     }
 
     func removeContextAPIKey() {
@@ -151,6 +161,7 @@ extension AppModel {
             try keychainCredentialStore.deleteKey(for: contextModelProvider)
             contextAPIKeyInput = ""
             hasContextAPIKey = false
+            isReplacingContextModelKey = false
             contextAPIKeyStatus = l10n.contextAPIKeyRemoved
         } catch {
             contextAPIKeyStatus = error.localizedDescription

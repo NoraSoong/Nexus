@@ -81,6 +81,7 @@ final class AppModel: ObservableObject {
     @Published var showQuickSwitcher = false
     @Published var showAddTextMaterialSheet = false
     @Published var showContextModelSettings = false
+    @Published var isReplacingContextModelKey = false
     @Published var newTextMaterialTitle = ""
     @Published var newTextMaterialBody = ""
     @Published var newTextMaterialVisible = true

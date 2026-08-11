@@ -40,7 +40,7 @@ struct ContextModelSettingsView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
 
-                if model.hasContextAPIKey {
+                if model.hasContextAPIKey && !model.isReplacingContextModelKey {
                     connectedContent
                 } else {
                     credentialForm
@@ -66,6 +66,9 @@ struct ContextModelSettingsView: View {
             }
         }
         .padding(22)
+        .onDisappear {
+            model.cancelContextModelKeyReplacement()
+        }
     }
 
     private var connectedContent: some View {
