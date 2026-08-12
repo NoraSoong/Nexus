@@ -79,6 +79,7 @@ ln -s /Applications "$STAGING_DIR/Applications"
 
 DMG_PATH="$OUTPUT_DIR/Nexus-${APP_VERSION}-arm64.dmg"
 hdiutil create -volname "Nexus ${APP_VERSION}" -srcfolder "$STAGING_DIR" -ov -format UDZO "$DMG_PATH" >/dev/null
+rm -rf "$STAGING_DIR"
 
 shasum -a 256 "$DMG_PATH" | sed "s#${OUTPUT_DIR}/##" > "$OUTPUT_DIR/SHA256SUMS"
 echo "$DMG_PATH"
