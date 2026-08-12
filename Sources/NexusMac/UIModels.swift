@@ -24,11 +24,12 @@ final class ContextPreparationModel {
     var draftBrief = ""
     var questionAnswers: [String: String] = [:]
     var error = ""
+    var diagnostic = ""
     var apiKeyInput = ""
     var apiKeyStatus = ""
     var hasAPIKey = false
     var modelProvider = storedContextModelProvider()
-    var modelOverride: String?
+    var modelSelection = storedContextModel(for: storedContextModelProvider())
 
     func comparison(to currentPack: ContextPack?) -> ContextPackDiff? {
         guard let candidate = candidateContent else { return nil }

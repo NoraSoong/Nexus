@@ -41,8 +41,11 @@ public final class ProjectionStore: @unchecked Sendable {
     public func createTask(title: String, goal: String, workspacePath: String) throws -> TaskRecord {
         try ensureDatabaseDirectory()
         let db = try openDatabase()
+        guard FileManager.default.fileExists(atPath: workspacePath) else {
+            throw WorkspaceAssociationError.pathUnavailable(workspacePath)
+        }
         guard let workspace = GitRepositoryReader.workspaceInfo(at: workspacePath) else {
-            throw SQLiteError.executeFailed("not a Git workspace: \(workspacePath)")
+            throw WorkspaceAssociationError.notGitWorkspace(workspacePath)
         }
 
         let timestamp = now()
@@ -82,17 +85,31 @@ public final class ProjectionStore: @unchecked Sendable {
 
         try db.execute("BEGIN IMMEDIATE;")
         do {
-            guard
-                try db.queryOne(
-                    """
-                    SELECT id FROM context_bindings
-                    WHERE scope_type = 'workspace' AND scope_key = ?
-                    LIMIT 1;
-                    """,
-                    bindings: [workspace.path]
-                ) == nil
-            else {
-                throw SQLiteError.executeFailed("workspace already bound: \(workspace.path)")
+            if let binding = try db.queryOne(
+                """
+                SELECT task_id FROM context_bindings
+                WHERE scope_type = 'workspace' AND scope_key = ?
+                LIMIT 1;
+                """,
+                bindings: [workspace.path]
+            ) {
+                throw WorkspaceAssociationError.alreadyBound(
+                    path: workspace.path,
+                    taskID: binding["task_id"] ?? ""
+                )
+            }
+            if let repository = try db.queryOne(
+                """
+                SELECT task_id FROM task_repositories
+                WHERE path = ?
+                LIMIT 1;
+                """,
+                bindings: [workspace.path]
+            ) {
+                throw WorkspaceAssociationError.alreadyLinked(
+                    path: workspace.path,
+                    taskID: repository["task_id"] ?? ""
+                )
             }
             try db.execute(
                 """
@@ -104,11 +121,13 @@ public final class ProjectionStore: @unchecked Sendable {
             try db.execute(
                 """
                 INSERT INTO task_repositories (
-                    task_id, path, branch, anchor_head_sha, anchor_branch, anchor_captured_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?);
+                    task_id, path, branch, workspace_origin, base_ref, created_head_sha,
+                    anchor_head_sha, anchor_branch, anchor_captured_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 """,
                 bindings: [
-                    task.id, repository.path, repository.branch, repository.anchorHeadSHA,
+                    task.id, repository.path, repository.branch, repository.workspaceOrigin.rawValue,
+                    repository.baseRef, repository.createdHeadSHA, repository.anchorHeadSHA,
                     repository.anchorBranch, repository.anchorCapturedAt, repository.updatedAt,
                 ]
             )
@@ -135,7 +154,10 @@ public final class ProjectionStore: @unchecked Sendable {
             return task
         } catch {
             try? db.execute("ROLLBACK;")
-            throw error
+            if let associationError = error as? WorkspaceAssociationError {
+                throw associationError
+            }
+            throw WorkspaceAssociationError.persistence(error.localizedDescription)
         }
     }
 
@@ -161,6 +183,11 @@ public final class ProjectionStore: @unchecked Sendable {
             ORDER BY updated_at DESC, created_at DESC;
             """
         ).map(ProjectionRowMapper.task)
+    }
+
+    public func task(id: String) throws -> TaskRecord? {
+        let db = try openDatabase()
+        return try findTask(id: id, db: db)
     }
 
     public func updateTask(id: String, title: String, goal: String) throws {
@@ -262,8 +289,10 @@ public final class ProjectionStore: @unchecked Sendable {
         }
     }
 
-    public func refreshActiveContextFreshness() throws {
+    @discardableResult
+    public func refreshActiveContextFreshness() throws -> Bool {
         let db = try openDatabase()
+        var didChange = false
         let taskIDs = try db.queryAll(
             "SELECT DISTINCT task_id FROM context_bindings WHERE task_id IS NOT NULL;"
         ).compactMap { $0["task_id"] }
@@ -284,7 +313,9 @@ public final class ProjectionStore: @unchecked Sendable {
                 continue
             }
             try writeProjections(task: task, db: db)
+            didChange = true
         }
+        return didChange
     }
 
     @discardableResult
@@ -399,19 +430,42 @@ public final class ProjectionStore: @unchecked Sendable {
     }
 
     public func setRepository(taskID: String, path: String) throws {
+        try setRepository(
+            taskID: taskID,
+            path: path,
+            workspaceOrigin: .external,
+            baseRef: nil,
+            createdHeadSHA: nil
+        )
+    }
+
+    public func setRepository(
+        taskID: String,
+        path: String,
+        workspaceOrigin: WorkspaceOrigin,
+        baseRef: String?,
+        createdHeadSHA: String?
+    ) throws {
         let db = try openDatabase()
+        guard try findTask(id: taskID, db: db) != nil else {
+            throw WorkspaceAssociationError.taskNotFound(taskID)
+        }
+        guard FileManager.default.fileExists(atPath: path) else {
+            throw WorkspaceAssociationError.pathUnavailable(path)
+        }
         guard let workspace = GitRepositoryReader.workspaceInfo(at: path) else {
-            throw SQLiteError.executeFailed("not a Git workspace: \(path)")
+            throw WorkspaceAssociationError.notGitWorkspace(path)
         }
         let normalizedPath = workspace.path
         let timestamp = now()
-        guard let task = try findTask(id: taskID, db: db) else {
-            throw SQLiteError.executeFailed("task not found: \(taskID)")
-        }
+        let task = try findTask(id: taskID, db: db)!
         let repository = TaskRepositoryRecord(
             taskID: taskID,
             path: normalizedPath,
             branch: workspace.branch,
+            workspaceOrigin: workspaceOrigin,
+            baseRef: baseRef,
+            createdHeadSHA: createdHeadSHA,
             anchorHeadSHA: GitRepositoryReader.headSHA(at: normalizedPath),
             anchorBranch: workspace.branch,
             anchorCapturedAt: timestamp,
@@ -446,17 +500,23 @@ public final class ProjectionStore: @unchecked Sendable {
                 """,
                 bindings: [normalizedPath]
             ), binding["task_id"] != taskID {
-                throw SQLiteError.executeFailed("workspace already bound: \(normalizedPath)")
+                throw WorkspaceAssociationError.alreadyBound(
+                    path: normalizedPath,
+                    taskID: binding["task_id"] ?? ""
+                )
             }
-            if try db.queryOne(
+            if let existingRepository = try db.queryOne(
                 """
                 SELECT task_id FROM task_repositories
                 WHERE path = ? AND task_id != ?
                 LIMIT 1;
                 """,
                 bindings: [normalizedPath, taskID]
-            ) != nil {
-                throw SQLiteError.executeFailed("workspace already linked: \(normalizedPath)")
+            ) {
+                throw WorkspaceAssociationError.alreadyLinked(
+                    path: normalizedPath,
+                    taskID: existingRepository["task_id"] ?? ""
+                )
             }
             let previousPath = try db.queryOne(
                 "SELECT path FROM task_repositories WHERE task_id = ?;",
@@ -466,18 +526,23 @@ public final class ProjectionStore: @unchecked Sendable {
             try db.execute(
                 """
                 INSERT INTO task_repositories (
-                    task_id, path, branch, anchor_head_sha, anchor_branch, anchor_captured_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    task_id, path, branch, workspace_origin, base_ref, created_head_sha,
+                    anchor_head_sha, anchor_branch, anchor_captured_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(task_id) DO UPDATE SET
                     path = excluded.path,
                     branch = excluded.branch,
+                    workspace_origin = excluded.workspace_origin,
+                    base_ref = excluded.base_ref,
+                    created_head_sha = excluded.created_head_sha,
                     anchor_head_sha = excluded.anchor_head_sha,
                     anchor_branch = excluded.anchor_branch,
                     anchor_captured_at = excluded.anchor_captured_at,
                     updated_at = excluded.updated_at;
                 """,
                 bindings: [
-                    taskID, repository.path, repository.branch, repository.anchorHeadSHA,
+                    taskID, repository.path, repository.branch, repository.workspaceOrigin.rawValue,
+                    repository.baseRef, repository.createdHeadSHA, repository.anchorHeadSHA,
                     repository.anchorBranch, repository.anchorCapturedAt, repository.updatedAt,
                 ]
             )
@@ -519,6 +584,81 @@ public final class ProjectionStore: @unchecked Sendable {
             try db.execute("COMMIT;")
         } catch {
             try? db.execute("ROLLBACK;")
+            if let associationError = error as? WorkspaceAssociationError {
+                throw associationError
+            }
+            throw WorkspaceAssociationError.persistence(error.localizedDescription)
+        }
+    }
+
+    public func refreshRepositoryAnchor(taskID: String) throws {
+        guard let repository = try repository(taskID: taskID) else {
+            throw WorkspaceAssociationError.pathUnavailable(taskID)
+        }
+        try setRepository(
+            taskID: taskID,
+            path: repository.path,
+            workspaceOrigin: repository.workspaceOrigin,
+            baseRef: repository.baseRef,
+            createdHeadSHA: repository.createdHeadSHA
+        )
+    }
+
+    public func unlinkRepository(taskID: String) throws {
+        let db = try openDatabase()
+        guard let task = try findTask(id: taskID, db: db) else {
+            throw WorkspaceAssociationError.taskNotFound(taskID)
+        }
+        let existingContext = try loadProjectionContext(taskID: taskID)
+        let previousPath = existingContext.repository?.path
+        let context = ProjectionContext(
+            checkpoint: existingContext.checkpoint,
+            notes: existingContext.notes,
+            visibleFiles: existingContext.visibleFiles,
+            hiddenFiles: existingContext.hiddenFiles,
+            repository: nil,
+            supplement: existingContext.supplement
+        )
+        let packResolution = try resolvedContextPack(task: task, context: context)
+        let payloads = try makePayloads(
+            task: task,
+            context: context,
+            pack: packResolution.projectionPack,
+            gitActivity: nil,
+            now: now()
+        )
+        let timestamp = now()
+
+        try db.execute("BEGIN IMMEDIATE;")
+        do {
+            try db.execute("DELETE FROM task_repositories WHERE task_id = ?;", bindings: [taskID])
+            if let previousPath {
+                try db.execute(
+                    "DELETE FROM context_bindings WHERE scope_type = 'workspace' AND scope_key = ? AND task_id = ?;",
+                    bindings: [WorkspacePath.normalize(previousPath), taskID]
+                )
+            }
+            try db.execute("INSERT INTO revision_counter DEFAULT VALUES;")
+            let revision = db.lastInsertRowID
+            if let persistedPack = packResolution.persistedPack {
+                try db.execute(
+                    "UPDATE context_packs SET freshness = ?, stale_reason = ? WHERE id = ?;",
+                    bindings: [persistedPack.freshness, persistedPack.staleReason, persistedPack.id]
+                )
+            }
+            try writeProjectionRows(
+                db: db,
+                task: task,
+                context: context,
+                payloads: payloads,
+                pack: packResolution.projectionPack,
+                revision: revision,
+                now: timestamp
+            )
+            try advanceBindings(db: db, taskID: taskID, revision: revision, now: timestamp)
+            try db.execute("COMMIT;")
+        } catch {
+            try? db.execute("ROLLBACK;")
             throw error
         }
     }
@@ -527,7 +667,8 @@ public final class ProjectionStore: @unchecked Sendable {
         let db = try openDatabase()
         return try db.queryOne(
             """
-            SELECT task_id, path, branch, anchor_head_sha, anchor_branch, anchor_captured_at, updated_at
+            SELECT task_id, path, branch, workspace_origin, base_ref, created_head_sha,
+                   anchor_head_sha, anchor_branch, anchor_captured_at, updated_at
             FROM task_repositories
             WHERE task_id = ?;
             """,
@@ -539,8 +680,8 @@ public final class ProjectionStore: @unchecked Sendable {
         let db = try openDatabase()
         return try db.queryAll(
             """
-            SELECT r.task_id, r.path, r.branch, r.anchor_head_sha, r.anchor_branch,
-                   r.anchor_captured_at, r.updated_at
+            SELECT r.task_id, r.path, r.branch, r.workspace_origin, r.base_ref, r.created_head_sha,
+                   r.anchor_head_sha, r.anchor_branch, r.anchor_captured_at, r.updated_at
             FROM task_repositories r
             JOIN tasks t ON t.id = r.task_id
             WHERE t.archived_at IS NULL

@@ -87,12 +87,38 @@ export function serializedContextPayload(payload: JsonRecord): string {
   return JSON.stringify(payload, null, 2);
 }
 
+export function sanitizeGeneratedProjectionPayload(payload: JsonRecord): JsonRecord {
+  const sanitized = JSON.parse(JSON.stringify(payload)) as JsonRecord;
+  if (typeof sanitized.brief === "string") {
+    sanitized.brief = cleanGeneratedText(sanitized.brief);
+  }
+  if (isRecord(sanitized.context_pack)) {
+    sanitizeGeneratedContext(sanitized.context_pack);
+  }
+  if (Array.isArray(sanitized.open_questions)) {
+    sanitized.open_questions = sanitized.open_questions.map((item) => {
+      if (!isRecord(item)) {
+        return item;
+      }
+      const cleaned = { ...item };
+      for (const field of ["question", "why_it_matters"]) {
+        if (typeof cleaned[field] === "string") {
+          cleaned[field] = cleanGeneratedText(cleaned[field]);
+        }
+      }
+      return cleaned;
+    });
+  }
+  return sanitized;
+}
+
 function confirmedContext(contextPack: JsonRecord, sourceIndex: JsonRecord[]): JsonRecord {
   const content = { ...contextPack };
   delete content.id;
   delete content.revision;
   delete content.effective_freshness;
   delete content.stale_reason;
+  sanitizeGeneratedContext(content);
   return {
     kind: "confirmed_pack",
     ...content,
@@ -103,11 +129,62 @@ function confirmedContext(contextPack: JsonRecord, sourceIndex: JsonRecord[]): J
 function fallbackContext(brief: JsonRecord): JsonRecord {
   return {
     kind: "fallback",
-    brief: stringValue(brief.brief),
+    brief: cleanGeneratedText(stringValue(brief.brief)),
     handoff_note: stringValue(brief.supplement),
     checkpoint: isRecord(brief.checkpoint) ? brief.checkpoint : null,
     sources: []
   };
+}
+
+function sanitizeGeneratedContext(content: JsonRecord): void {
+  for (const key of [
+    "objective",
+    "brief",
+    "scope_in",
+    "scope_out",
+    "confirmed_facts",
+    "constraints",
+    "acceptance_criteria",
+    "assumptions",
+    "questions"
+  ]) {
+    const value = content[key];
+    if (typeof value === "string") {
+      content[key] = cleanGeneratedText(value);
+    } else if (Array.isArray(value)) {
+      content[key] = value.map((item) => {
+        if (!isRecord(item)) {
+          return item;
+        }
+        const cleaned = { ...item };
+        for (const field of ["text", "question", "why_it_matters"]) {
+          if (typeof cleaned[field] === "string") {
+            cleaned[field] = cleanGeneratedText(cleaned[field]);
+          }
+        }
+        return cleaned;
+      });
+    }
+  }
+}
+
+function cleanGeneratedText(value: string): string {
+  const aliasPattern = /(?<![A-Za-z0-9])S[0-9]{1,3}(?![A-Za-z0-9])/g;
+  const matches = [...value.matchAll(aliasPattern)];
+  let result = value;
+  for (const match of matches.reverse()) {
+    const index = match.index ?? 0;
+    const before = value.slice(Math.max(0, index - 10), index);
+    const previousToken = before.trim().split(/\s+/).pop() ?? "";
+    if (/^[A-Za-z0-9]+$/.test(previousToken)) {
+      continue;
+    }
+    result = result.slice(0, index) + result.slice(index + match[0].length);
+  }
+  return result
+    .replace(/\s*(\(\s*\)|（\s*）)/g, "")
+    .replace(/\s+([，。！？；：、）】])/g, "$1")
+    .trim();
 }
 
 function normalizeFileMaterial(file: JsonRecord): JsonRecord {

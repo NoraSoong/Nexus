@@ -11,8 +11,8 @@ extension AppModel {
             return
         }
         contextPreparationTask?.cancel()
-        contextPreparationModelOverride = nil
         contextPreparationError = ""
+        contextPreparationDiagnostic = ""
         contextPreparationPhase = .loadingSources
         showContextPreparationSheet = true
         contextPreparationTask = Task { @MainActor [weak self] in
@@ -35,6 +35,7 @@ extension AppModel {
             } catch is CancellationError {
                 showContextPreparationSheet = false
             } catch {
+                contextPreparationDiagnostic = error.localizedDescription
                 contextPreparationError = l10n.contextPreparationErrorMessage(error)
                 contextPreparationPhase = .preflight
             }
@@ -87,25 +88,33 @@ extension AppModel {
     var contextModelConfiguration: ContextModelConfiguration {
         ContextModelConfiguration(
             provider: contextModelProvider,
-            model: contextPreparationModelOverride
+            model: contextModelSelection
         )
-    }
-
-    var canPrepareWithDeepSeekPro: Bool {
-        contextModelProvider == .deepSeek
-            && contextModelConfiguration.model != DeepSeekContextModelClient.proModel
-            && hasContextAPIKey
     }
 
     func selectContextModelProvider(_ provider: ContextModelProvider) {
         guard contextModelProvider != provider else { return }
         contextPreparationTask?.cancel()
         contextModelProvider = provider
-        contextPreparationModelOverride = nil
+        contextModelSelection = storedContextModel(for: provider)
+        isReplacingContextModelKey = false
         UserDefaults.standard.set(provider.rawValue, forKey: contextModelProviderDefaultsKey)
         contextAPIKeyInput = ""
         contextAPIKeyStatus = ""
         hasContextAPIKey = ((try? keychainCredentialStore.loadKey(for: provider)) ?? nil)?.isEmpty == false
+    }
+
+    func selectContextModel(_ model: String) {
+        let validModels: [String]
+        switch contextModelProvider {
+        case .deepSeek:
+            validModels = [DeepSeekContextModelClient.flashModel, DeepSeekContextModelClient.proModel]
+        case .openAI:
+            validModels = [contextModelProvider.defaultModel]
+        }
+        guard validModels.contains(model) else { return }
+        contextModelSelection = model
+        UserDefaults.standard.set(model, forKey: contextModelDefaultsKey(for: contextModelProvider))
     }
 
     func connectContextModel() {
@@ -125,6 +134,7 @@ extension AppModel {
                 try keychainCredentialStore.saveKey(key, for: provider)
                 contextAPIKeyInput = ""
                 hasContextAPIKey = true
+                isReplacingContextModelKey = false
                 contextAPIKeyStatus = l10n.connectionVerified
                 UserDefaults.standard.set(provider.rawValue, forKey: contextModelProviderDefaultsKey)
             } catch is CancellationError {
@@ -141,7 +151,15 @@ extension AppModel {
         contextPreparationTask?.cancel()
         contextAPIKeyInput = ""
         contextAPIKeyStatus = ""
-        hasContextAPIKey = false
+        isReplacingContextModelKey = true
+    }
+
+    func cancelContextModelKeyReplacement() {
+        guard isReplacingContextModelKey else { return }
+        isReplacingContextModelKey = false
+        contextAPIKeyInput = ""
+        contextAPIKeyStatus = ""
+        hasContextAPIKey = ((try? keychainCredentialStore.loadKey(for: contextModelProvider)) ?? nil)?.isEmpty == false
     }
 
     func removeContextAPIKey() {
@@ -149,6 +167,7 @@ extension AppModel {
             try keychainCredentialStore.deleteKey(for: contextModelProvider)
             contextAPIKeyInput = ""
             hasContextAPIKey = false
+            isReplacingContextModelKey = false
             contextAPIKeyStatus = l10n.contextAPIKeyRemoved
         } catch {
             contextAPIKeyStatus = error.localizedDescription
@@ -194,6 +213,7 @@ extension AppModel {
                 answers: contextQuestionAnswers
             )
             contextPreparationError = ""
+            contextPreparationDiagnostic = ""
             contextPreparationPhase = .preparing
             let client = ContextModelClientFactory.make(configuration: contextModelConfiguration)
             let oldDraftID = contextDraft?.id
@@ -229,19 +249,15 @@ extension AppModel {
                         contextPreparationPhase = contextDraft == nil ? .preflight : .review
                         return
                     }
+                    contextPreparationDiagnostic = error.localizedDescription
                     contextPreparationError = l10n.contextPreparationErrorMessage(error)
                     contextPreparationPhase = .preflight
                 }
             }
         } catch {
+            contextPreparationDiagnostic = error.localizedDescription
             contextPreparationError = l10n.contextPreparationErrorMessage(error)
         }
-    }
-
-    func generateContextDraftWithDeepSeekPro() {
-        guard contextModelProvider == .deepSeek else { return }
-        contextPreparationModelOverride = DeepSeekContextModelClient.proModel
-        generateContextDraft()
     }
 
     func cancelContextPreparationRequest() {
@@ -255,7 +271,8 @@ extension AppModel {
             let task = tasks.first(where: { $0.id == draft.taskID })
         else { return }
         do {
-            draft.content.brief = contextDraftBrief.trimmingCharacters(in: .whitespacesAndNewlines)
+            draft.content = ContextTextSanitizer.clean(draft.content)
+            draft.content.brief = ContextTextSanitizer.cleanText(contextDraftBrief)
             draft.content = try ContextPreparationService.validated(
                 draft.content,
                 sourceIDs: Set(draft.sourceManifest.map(\.id))
@@ -298,10 +315,12 @@ extension AppModel {
                 } catch is CancellationError {
                     return
                 } catch {
+                    contextPreparationDiagnostic = error.localizedDescription
                     contextPreparationError = l10n.contextPreparationErrorMessage(error)
                 }
             }
         } catch {
+            contextPreparationDiagnostic = error.localizedDescription
             contextPreparationError = l10n.contextPreparationErrorMessage(error)
         }
     }
@@ -323,10 +342,14 @@ extension AppModel {
     }
 
     func sourceTitle(for id: String) -> String {
-        contextPreparationInput?.sources.first(where: { $0.id == id })?.reference.title
+        let resolvedTitle = contextPreparationInput?.sources.first(where: { $0.id == id })?.reference.title
             ?? contextDraft?.sourceManifest.first(where: { $0.id == id })?.title
             ?? currentContextPack?.sourceManifest.first(where: { $0.id == id })?.title
-            ?? id
+        if let resolvedTitle {
+            return resolvedTitle
+        }
+        let cleanedID = ContextTextSanitizer.cleanText(id)
+        return cleanedID.isEmpty ? l10n.unknownContextSource : cleanedID
     }
 
     func refreshCurrentContextSourceChanges() {

@@ -88,17 +88,55 @@ struct L10n {
     var archiveWork: String { zh ? "归档工作" : "Archive Work" }
     var deleteWork: String { zh ? "删除工作" : "Delete Work" }
     var workActions: String { zh ? "工作操作" : "Work actions" }
-    var activeBadge: String { zh ? "默认" : "Default" }
-    var previewBadge: String { zh ? "预览" : "Preview" }
+    var activeBadge: String { zh ? "当前" : "Current" }
+    var previewBadge: String { zh ? "仅查看" : "Viewing" }
     var unnamedWork: String { zh ? "未命名工作" : "Unnamed work" }
     var emptyWorkHint: String { zh ? "添加标题，或归档这个空工作。" : "Add a title or archive this empty work." }
     var noGoalYet: String { zh ? "还没有目标" : "No goal yet" }
     var titlePlaceholder: String { zh ? "你正在处理什么？" : "What are you working on?" }
     var goalPlaceholder: String { zh ? "一句话目标" : "One sentence goal" }
-    var makeActive: String { zh ? "设为默认" : "Set Default" }
-    var useCurrentBranch: String { zh ? "使用当前分支" : "Use Branch" }
+    var makeActive: String { zh ? "设为当前工作" : "Make Current" }
+    var useCurrentBranch: String { zh ? "更新关联分支" : "Update Link" }
+    var useCurrentBranchHelp: String {
+        zh ? "只更新 Nexus 的关联记录，不会切换 Git 分支。" : "Updates the Nexus link only; it does not switch Git branches."
+    }
     var connectProject: String { zh ? "关联工作区" : "Connect Workspace" }
     var changeDirectory: String { zh ? "更换工作区" : "Change Workspace" }
+    var chooseExistingWorkspace: String { zh ? "选择已有代码目录" : "Choose Existing Code Directory" }
+    var createIsolatedWorkspace: String { zh ? "创建隔离代码目录" : "Create Isolated Code Directory" }
+    var workspaceProvisioningTitle: String { zh ? "创建隔离代码目录" : "Create Isolated Code Directory" }
+    var repositoryRoot: String { zh ? "代码仓库" : "Repository" }
+    var baseBranch: String { zh ? "基准分支" : "Base Branch" }
+    var newBranch: String { zh ? "新分支" : "New Branch" }
+    var destinationDirectory: String { zh ? "代码目录" : "Code Directory" }
+    var dirtyBaseWarning: String {
+        zh
+            ? "当前代码目录有未提交修改。新目录只会从当前 HEAD 创建，不会复制这些修改。"
+            : "This code directory has uncommitted changes. The new directory starts from HEAD and will not copy them."
+    }
+    var confirmDirtyBase: String { zh ? "我知道新目录不会包含未提交修改" : "I understand uncommitted changes will not be copied" }
+    var createWorkspace: String { zh ? "创建目录" : "Create Directory" }
+    var confirm: String { zh ? "确认创建" : "Confirm" }
+    var preview: String { zh ? "检查设置" : "Review Settings" }
+    var zhWorkspaceProvisioningSubtitle: String {
+        zh
+            ? "为当前工作创建独立目录，之后可以在常用开发工具中打开。"
+            : "Create an isolated directory for this Work, then open it in your preferred development tool."
+    }
+    var zhWorkspaceProvisioningPathHint: String {
+        zh
+            ? "默认放在仓库旁边的 .nexus-worktrees 目录中，也可以改成其他未存在的路径。"
+            : "By default this lives beside the repository in .nexus-worktrees. You can choose another new path."
+    }
+    var workspaceCreatedFromHead: String { zh ? "已从当前 HEAD 创建隔离目录" : "Isolated directory created from current HEAD" }
+    var workspaceUnlinked: String {
+        zh ? "已解除 Nexus 关联，目录和分支未删除" : "Nexus link removed; directory and branch were kept"
+    }
+    var workspaceUnlinkFailed: String { zh ? "解除工作区关联失败" : "Could not unlink workspace" }
+    var copyWorkspacePath: String { zh ? "复制目录路径" : "Copy Directory Path" }
+    var revealWorkspaceInFinder: String { zh ? "在 Finder 中显示" : "Reveal in Finder" }
+    var openWorkspaceInTerminal: String { zh ? "在终端中打开" : "Open in Terminal" }
+    var removeWorkspaceLink: String { zh ? "解除 Nexus 关联" : "Unlink from Nexus" }
     var handoffTitle: String { zh ? "补充说明" : "Additional Note" }
     var saveFailed: String { zh ? "保存失败" : "Save failed" }
     var saveSnapshot: String { zh ? "保存快照" : "Save Snapshot" }
@@ -149,7 +187,7 @@ struct L10n {
             ? "新的助手会话仍使用默认工作；已运行会话不会随窗口切换。"
             : "New assistant sessions still use the default work; running sessions do not follow window changes."
     }
-    var assistantCurrentlyReads: String { zh ? "新会话默认" : "New Sessions Default" }
+    var assistantCurrentlyReads: String { zh ? "新会话使用" : "New Sessions Use" }
     var assistantPreviewPrimaryTitle: String { zh ? "助手当前会看到" : "What assistants can see" }
     var assistantPreviewPausedBody: String {
         zh ? "当前开关已关闭，助手不会读取 Nexus 上下文。" : "Reading is paused. Assistants cannot read Nexus context."
@@ -198,9 +236,19 @@ struct L10n {
     }
     var cancelPreparation: String { zh ? "停止整理" : "Stop" }
     var contextReview: String { zh ? "确认整理结果" : "Review prepared context" }
+    var contextReviewDescription: String {
+        zh
+            ? "先看摘要，再核对不确定内容。确认后才会更新助手可读取的上下文。"
+            : "Review the summary and unresolved details. Assistants only read it after you apply it."
+    }
     var noContextChanges: String { zh ? "整理结果与当前确认内容一致。" : "The prepared result matches the confirmed context." }
     var reviewContextChanges: String { zh ? "查看具体变化" : "Review changes" }
     var contextReviewFindingsTitle: String { zh ? "需要核对" : "Check these details" }
+    var contextReviewFindingsDescription: String {
+        zh
+            ? "这些内容仍需你确认，助手不会把它们当成事实。"
+            : "These details still need your confirmation and are not treated as facts."
+    }
     var contextReviewed: String { zh ? "上下文已审核" : "Context reviewed" }
     var contextNeedsReview: String { zh ? "材料有变化" : "Materials changed" }
     var codeChangesAvailable: String { zh ? "代码有新变化" : "Code changed" }
@@ -215,7 +263,15 @@ struct L10n {
     var contextConfirmedFacts: String { zh ? "已确认事实" : "Confirmed facts" }
     var contextConstraints: String { zh ? "约束" : "Constraints" }
     var contextAcceptanceCriteria: String { zh ? "验收条件" : "Acceptance criteria" }
-    var contextAssumptions: String { zh ? "仍是推测" : "Assumptions" }
+    var contextAssumptions: String { zh ? "待确认假设" : "Unconfirmed assumptions" }
+    var contextAssumptionExplanation: String {
+        zh
+            ? "这些内容是根据材料整理出的可能解释，还没有被材料或你明确确认。助手会把它们当作待确认信息，而不是事实。"
+            : "These are possible interpretations from the materials, not confirmed facts. Assistants should treat them as unresolved."
+    }
+    var contextAssumptionReviewHint: String {
+        zh ? "请确认它们是否成立，或补充材料后重新整理。" : "Confirm them, or add material and prepare again."
+    }
     var contextDetails: String { zh ? "查看整理依据" : "Review prepared details" }
     var editPreparedDetailsHint: String {
         zh ? "可修正文案；来源引用会保留。" : "You can correct the wording; source references remain attached."
@@ -228,11 +284,12 @@ struct L10n {
     var whyItMatters: String { zh ? "为什么重要" : "Why it matters" }
     var citedSources: String { zh ? "依据" : "Sources" }
     var regenerateContext: String { zh ? "重新整理" : "Prepare Again" }
-    var prepareWithDeepSeekPro: String { zh ? "使用 V4 Pro 深入整理" : "Prepare with V4 Pro" }
-    var retryWithDeepSeekPro: String { zh ? "使用 V4 Pro 重试" : "Retry with V4 Pro" }
-    var deepSeekProOneTimeHint: String {
-        zh ? "仅本次使用更强模型，不改变日常整理的默认设置。" : "Uses the stronger model once without changing the everyday default."
+    var contextModelChoiceTitle: String { zh ? "整理模型" : "Preparation model" }
+    var contextModelChoiceHint: String {
+        zh ? "Flash 适合日常整理；Pro 更适合材料多、冲突或歧义较多的工作。" : "Flash is for everyday preparation; Pro is better for larger or more ambiguous work."
     }
+    var contextModelChoiceFlash: String { zh ? "日常整理 · Flash" : "Everyday · Flash" }
+    var contextModelChoicePro: String { zh ? "复杂材料 · Pro" : "Complex · Pro" }
     var applyContextPack: String { zh ? "设为当前上下文" : "Set as Current Context" }
     var applyEditedContextPack: String { zh ? "设为当前上下文" : "Set as Current Context" }
     var regenerateAnsweredQuestionsHint: String {
@@ -249,6 +306,7 @@ struct L10n {
     var updateCurrentContext: String { zh ? "更新" : "Update" }
     var contextEvidenceCount: String { zh ? "项依据" : "sources" }
     var sources: String { zh ? "来源" : "Sources" }
+    var unknownContextSource: String { zh ? "未识别材料" : "Unknown material" }
     var viewCurrentContext: String { zh ? "查看完整上下文与来源" : "View full context and sources" }
     func lastApplied(_ value: String) -> String {
         zh ? "采用于 \(value)" : "Applied \(value)"
@@ -272,8 +330,16 @@ struct L10n {
             ? "材料在草稿生成后发生了变化，请重新整理。"
             : "Materials changed after this draft was prepared. Prepare it again before approval."
     }
-    var contextAPIKeyTitle: String { zh ? "整理模型" : "Preparation model" }
-    var contextAPIKeyDescription: String { zh ? "Key 仅保存在这台 Mac 的钥匙串中。" : "The key stays in this Mac's Keychain." }
+    var contextAPIKeyTitle: String { zh ? "整理服务" : "Preparation service" }
+    var contextModelSettingsTitle: String { zh ? "整理服务设置" : "Preparation service settings" }
+    var contextModelNotConnected: String { zh ? "尚未连接整理服务" : "No preparation service connected" }
+    var manageContextModel: String { zh ? "设置" : "Settings" }
+    var preparationDiagnostic: String { zh ? "整理诊断" : "Preparation diagnostic" }
+    var contextAPIKeyDescription: String {
+        zh
+            ? "凭据仅保存在本机，用于你主动发起的整理请求。"
+            : "Credentials stay on this Mac and are used only for preparation requests you start."
+    }
     var connectContextModel: String { zh ? "连接" : "Connect" }
     var changeContextModel: String { zh ? "更换连接" : "Change Connection" }
     var removeAPIKey: String { zh ? "移除 Key" : "Remove Key" }
@@ -282,6 +348,33 @@ struct L10n {
     var contextAPIKeyRequired: String { zh ? "请输入当前服务商的 API Key" : "Enter an API key for the selected provider" }
     var verifying: String { zh ? "正在验证…" : "Verifying…" }
     var connectionVerified: String { zh ? "连接可用" : "Connection verified" }
+
+    func workspaceAssociationErrorMessage(_ error: Error, existingWorkTitle: String? = nil) -> String {
+        guard let associationError = error as? WorkspaceAssociationError else {
+            return zh ? "工作区关联失败，请稍后重试。" : "The workspace could not be linked. Try again."
+        }
+        switch associationError {
+        case .notGitWorkspace:
+            return zh
+                ? "这个目录不是 Git 工作区，请选择仓库目录或已有代码目录。"
+                : "This directory is not a Git workspace. Choose a repository or existing code directory."
+        case .alreadyBound, .alreadyLinked:
+            let title = existingWorkTitle ?? (zh ? "其他 Work" : "another Work")
+            return zh
+                ? "这个工作区已关联到「\(title)」。如果要并行处理，请选择另一个代码目录。"
+                : "This workspace is already linked to \(title). Choose another code directory for parallel work."
+        case .pathUnavailable:
+            return zh
+                ? "无法读取这个工作区，请确认目录仍然存在。"
+                : "This workspace is unavailable. Check that the directory still exists."
+        case .taskNotFound:
+            return zh ? "当前 Work 不存在，无法关联工作区。" : "The selected Work no longer exists."
+        case .persistence:
+            return zh
+                ? "工作区关联未保存，现有绑定没有改变。"
+                : "The workspace link was not saved. Existing bindings were unchanged."
+        }
+    }
     var noSnapshotYet: String { zh ? "还没有快照" : "No snapshot yet" }
     var recentHandoffs: String { zh ? "历史快照" : "Snapshot History" }
     var rename: String { zh ? "重命名" : "Rename" }
@@ -365,10 +458,7 @@ struct L10n {
     var deleted: String { zh ? "已删除" : "Deleted" }
     var visibleToast: String { zh ? "助手可读取这项材料" : "Assistant can read this" }
     var hiddenToast: String { zh ? "已隐藏，助手不可读" : "Hidden from assistant" }
-    var currentBranchHasWork: String { zh ? "当前分支已有对应工作" : "This branch already has a work item" }
     var open: String { zh ? "打开" : "Open" }
-    var openMatchedWork: String { zh ? "打开对应工作" : "Open Work" }
-    var createWorkFromCurrentBranch: String { zh ? "从当前分支创建工作" : "Create work from current branch" }
     var noProjectConnectedSentence: String { zh ? "未关联项目。" : "No project connected." }
     var noHandoffNoteYet: String { zh ? "没有补充说明。" : "No additional note." }
     var noReadableMaterialsShort: String { zh ? "没有可读材料。" : "No readable materials." }
@@ -402,18 +492,61 @@ struct L10n {
     var heartbeatStale: String { zh ? "Nexus 运行状态已过期。" : "Nexus heartbeat is stale." }
     var appNotRunning: String { zh ? "Nexus 没有运行。" : "Nexus is not running." }
     var appProcessNotAlive: String { zh ? "Nexus 进程已退出。" : "Nexus process is no longer alive." }
-    var chooseGitRepository: String { zh ? "选择 Git 主目录或现有 worktree" : "Choose a Git checkout or existing worktree" }
+    var chooseGitRepository: String { zh ? "选择 Git 主目录或已有代码目录" : "Choose a Git checkout or existing code directory" }
     var repositoryLinked: String { zh ? "工作区已关联，上下文已固定" : "Workspace connected and context pinned" }
     var branchLinked: String { zh ? "工作区绑定已更新" : "Workspace binding updated" }
     var mainCheckout: String { zh ? "主工作区" : "Main checkout" }
+    var mainCodeWorkspace: String { zh ? "主代码目录" : "Main code directory" }
+    var isolatedCodeWorkspace: String { zh ? "隔离代码目录" : "Isolated code directory" }
+    var linkedBranch: String { zh ? "关联分支" : "Linked branch" }
+    var currentBranch: String { zh ? "当前分支" : "Current branch" }
     var contextPinned: String { zh ? "上下文已固定" : "Context pinned" }
     var availableWorkspaces: String { zh ? "可关联目录" : "Available workspaces" }
     var createWorkFromWorkspace: String { zh ? "为此目录新建工作" : "Create Work for This Workspace" }
     var linkToExistingWork: String { zh ? "关联到已有工作" : "Link to Existing Work" }
     var workCreatedFromWorkspace: String { zh ? "工作已创建并关联目录" : "Work created and linked to workspace" }
     var workspaceLinked: String { zh ? "工作目录已关联" : "Workspace linked" }
+    func workspaceCreated(_ path: String) -> String {
+        let name = URL(fileURLWithPath: path).lastPathComponent
+        return zh ? "已创建隔离目录：\(name)" : "Created isolated directory: \(name)"
+    }
+
+    func workspaceProvisioningErrorMessage(_ error: Error) -> String {
+        guard let error = error as? WorkspaceProvisioningError else {
+            return zh
+                ? "创建隔离目录失败，请检查仓库和分支设置。"
+                : "Could not create the isolated directory. Check the repository and branch settings."
+        }
+        switch error {
+        case .notGitRepository:
+            return zh ? "请选择一个 Git 仓库或已有代码目录。" : "Choose a Git repository or existing code directory."
+        case .taskNotFound, .taskAlreadyLinked:
+            return zh ? "当前工作已经有代码目录，或已不存在。" : "This Work already has a code directory or no longer exists."
+        case .baseRefUnavailable(let ref):
+            return zh ? "找不到基准分支「\(ref)」。" : "The base branch \(ref) could not be found."
+        case .invalidBranchName:
+            return zh ? "新分支名称不合法。" : "The new branch name is invalid."
+        case .branchAlreadyExists(let branch), .branchAlreadyCheckedOut(let branch, _):
+            return zh ? "分支「\(branch)」已经存在，请换一个名称。" : "The branch \(branch) already exists. Choose another name."
+        case .destinationExists:
+            return zh ? "目标代码目录已经存在，请换一个路径。" : "The destination already exists. Choose another path."
+        case .destinationConflicts:
+            return zh ? "目标路径已被其他代码工作区使用。" : "The destination is already used by another code workspace."
+        case .dirtyBaseRequiresConfirmation:
+            return dirtyBaseWarning
+        case .gitCommandFailed(_, let detail):
+            return zh ? "Git 创建失败：\(detail)" : "Git could not create the workspace: \(detail)"
+        case .persistenceFailed(let cleanupPath, _):
+            if let cleanupPath {
+                return zh
+                    ? "目录已创建，但 Nexus 未能保存关联。请保留或手动清理：\(cleanupPath)"
+                    : "The directory was created, but Nexus could not save the link. Check: \(cleanupPath)"
+            }
+            return zh ? "目录创建后，Nexus 未能保存关联。" : "Nexus could not save the workspace link after creation."
+        }
+    }
     func worktreeName(_ name: String) -> String {
-        zh ? "Worktree · \(name)" : "Worktree · \(name)"
+        zh ? "代码目录 · \(name)" : "Code Directory · \(name)"
     }
     var bootstrapFailed: String { zh ? "启动失败" : "Bootstrap failed" }
     var refreshFailed: String { zh ? "刷新失败" : "Refresh failed" }
@@ -428,8 +561,6 @@ struct L10n {
     var removeFailed: String { zh ? "移除失败" : "Remove failed" }
     var addTitleAndBody: String { zh ? "请填写正文" : "Add body text" }
     var addTextFailed: String { zh ? "添加文本失败" : "Add text failed" }
-    var repositoryFailed: String { zh ? "项目关联失败" : "Repository failed" }
-    var relinkFailed: String { zh ? "分支绑定失败" : "Relink failed" }
     var previewFailed: String { zh ? "预览失败" : "Preview failed" }
     var assistantContextFailed: String { zh ? "助手上下文更新失败" : "Assistant Context failed" }
     var archiveFailed: String { zh ? "归档失败" : "Archive failed" }
@@ -535,8 +666,8 @@ struct L10n {
                 : "\(finding.count) question\(finding.count == 1 ? "" : "s") remain unresolved"
         case .assumptions:
             return zh
-                ? "\(finding.count) 条内容仍是推测"
-                : "\(finding.count) assumption\(finding.count == 1 ? "" : "s") remain"
+                ? "\(finding.count) 条内容尚未确认"
+                : "\(finding.count) assumption\(finding.count == 1 ? "" : "s") remain unconfirmed"
         case .truncatedSources:
             return zh
                 ? "\(finding.count) 份被引用材料只读取了部分内容"
@@ -645,10 +776,21 @@ struct L10n {
             switch preparationError {
             case .noReadableSources:
                 return zh ? "没有可用于整理的材料。" : "There are no readable sources to prepare."
-            case .invalidModelOutput(let detail):
+            case .invalidModelOutput:
                 return zh
-                    ? "整理结果没有通过来源校验（\(detail)），未保存草稿。"
-                    : "The draft failed source validation (\(detail)). No draft was saved."
+                    ? "模型返回的整理结果不完整，未保存草稿。请重试。"
+                    : "The model returned an incomplete context draft. No draft was saved. Try again."
+            case .invalidSourceCitation(let failure):
+                switch failure {
+                case .missingRequiredSource:
+                    return zh
+                        ? "模型没有为部分确定内容标注来源，结果未保存。请重试。"
+                        : "The model left some confirmed content uncited. No draft was saved. Try again."
+                case .unknownSources, .unknownRecommendedSources:
+                    return zh
+                        ? "模型引用了本次未发送的材料，结果未保存。请重试或减少材料。"
+                        : "The model cited material that was not sent. No draft was saved. Try again or reduce the materials."
+                }
             case .staleDraft:
                 return contextDraftOutdated
             case .draftNotFound:

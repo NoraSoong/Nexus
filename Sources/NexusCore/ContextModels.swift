@@ -312,9 +312,16 @@ public struct ContextPack: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+public enum ContextSourceCitationFailure: Equatable, Sendable {
+    case missingRequiredSource
+    case unknownSources([String])
+    case unknownRecommendedSources([String])
+}
+
 public enum ContextPreparationError: LocalizedError, Equatable {
     case noReadableSources
     case invalidModelOutput(String)
+    case invalidSourceCitation(ContextSourceCitationFailure)
     case staleDraft
     case draftNotFound
 
@@ -324,6 +331,15 @@ public enum ContextPreparationError: LocalizedError, Equatable {
             return "No readable context sources are available."
         case .invalidModelOutput(let detail):
             return "The model returned an invalid context draft: \(detail)"
+        case .invalidSourceCitation(let failure):
+            switch failure {
+            case .missingRequiredSource:
+                return "The model returned a claim without a source citation."
+            case .unknownSources(let sourceIDs):
+                return "The model cited sources that were not sent: \(sourceIDs.joined(separator: ", "))."
+            case .unknownRecommendedSources(let sourceIDs):
+                return "The model recommended sources that were not sent: \(sourceIDs.joined(separator: ", "))."
+            }
         case .staleDraft:
             return "The work changed after this draft was generated. Prepare it again before applying."
         case .draftNotFound:

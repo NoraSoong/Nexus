@@ -2,6 +2,85 @@ import AppKit
 import NexusCore
 import SwiftUI
 
+struct NexusPanel<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            content
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(NSColor.textBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.secondary.opacity(0.13), lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.028), radius: 12, x: 0, y: 5)
+    }
+}
+
+struct NexusPanelHeader: View {
+    let systemImage: String
+    let title: String
+    let subtitle: String?
+    let accent: Color
+    let trailing: String?
+
+    init(
+        systemImage: String,
+        title: String,
+        subtitle: String? = nil,
+        accent: Color = .accentColor,
+        trailing: String? = nil
+    ) {
+        self.systemImage = systemImage
+        self.title = title
+        self.subtitle = subtitle
+        self.accent = accent
+        self.trailing = trailing
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(accent)
+                .frame(width: 30, height: 30)
+                .background(accent.opacity(0.11))
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.headline)
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            if let trailing, !trailing.isEmpty {
+                Text(trailing)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.secondary.opacity(0.08))
+                    .clipShape(Capsule())
+            }
+        }
+    }
+}
+
 struct ContextReadyBadge: View {
     let isReady: Bool
     let l10n: L10n
@@ -85,12 +164,22 @@ struct ProjectContextBar: View {
     let makeCurrent: () -> Void
     let useCurrentBranch: () -> Void
     let chooseRepository: () -> Void
+    let createWorkspace: () -> Void
+    let copyWorkspacePath: () -> Void
+    let revealWorkspace: () -> Void
+    let openWorkspaceInTerminal: () -> Void
+    let unlinkWorkspace: () -> Void
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            Image(systemName: repository == nil ? "folder.badge.questionmark" : "folder")
-                .foregroundStyle(.secondary)
-                .frame(width: 20)
+            ZStack {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(Color.accentColor.opacity(repository == nil ? 0.07 : 0.11))
+                Image(systemName: repository == nil ? "folder.badge.questionmark" : "folder")
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(repository == nil ? .secondary : Color.accentColor)
+            }
+            .frame(width: 32, height: 32)
 
             VStack(alignment: .leading, spacing: 4) {
                 if let repository {
@@ -98,8 +187,19 @@ struct ProjectContextBar: View {
                         Text(projectName(repository))
                             .font(.callout.weight(.semibold))
                             .lineLimit(1)
+                    }
+                    .help(repository.path)
+                    HStack(spacing: 7) {
+                        Label(
+                            workspaceInfo?.kind == "worktree"
+                                ? l10n.isolatedCodeWorkspace
+                                : l10n.mainCodeWorkspace,
+                            systemImage: workspaceInfo?.kind == "worktree" ? "square.stack.3d.up" : "folder"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                         if currentBranch != "-", currentBranch != "(unknown)" {
-                            Label(currentBranch, systemImage: "arrow.triangle.branch")
+                            Text(currentBranch)
                                 .font(.caption)
                                 .foregroundStyle(aligned ? Color.secondary : Color.orange)
                                 .lineLimit(1)
@@ -110,7 +210,16 @@ struct ProjectContextBar: View {
                                 .foregroundStyle(.orange)
                         }
                     }
-                    .help(repository.path)
+                    if !aligned, currentBranch != "-", currentBranch != "(unknown)" {
+                        HStack(spacing: 5) {
+                            Text("\(l10n.linkedBranch): \(repository.branch)")
+                            Text("·")
+                            Text("\(l10n.currentBranch): \(currentBranch)")
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                        .lineLimit(1)
+                    }
                 } else {
                     Text(l10n.noProjectConnected)
                         .font(.callout.weight(.semibold))
@@ -137,10 +246,20 @@ struct ProjectContextBar: View {
                         Label(l10n.useCurrentBranch, systemImage: "arrow.triangle.branch")
                     }
                     .controlSize(.small)
+                    .help(l10n.useCurrentBranchHelp)
                 }
                 if repository == nil {
-                    Button {
-                        chooseRepository()
+                    Menu {
+                        Button {
+                            chooseRepository()
+                        } label: {
+                            Label(l10n.chooseExistingWorkspace, systemImage: "folder")
+                        }
+                        Button {
+                            createWorkspace()
+                        } label: {
+                            Label(l10n.createIsolatedWorkspace, systemImage: "square.stack.3d.up")
+                        }
                     } label: {
                         Label(l10n.connectProject, systemImage: "folder")
                     }
@@ -150,7 +269,29 @@ struct ProjectContextBar: View {
                         Button {
                             chooseRepository()
                         } label: {
-                            Label(l10n.changeDirectory, systemImage: "folder")
+                            Label(l10n.chooseExistingWorkspace, systemImage: "folder")
+                        }
+                        Divider()
+                        Button {
+                            copyWorkspacePath()
+                        } label: {
+                            Label(l10n.copyWorkspacePath, systemImage: "doc.on.doc")
+                        }
+                        Button {
+                            revealWorkspace()
+                        } label: {
+                            Label(l10n.revealWorkspaceInFinder, systemImage: "folder.badge.gearshape")
+                        }
+                        Button {
+                            openWorkspaceInTerminal()
+                        } label: {
+                            Label(l10n.openWorkspaceInTerminal, systemImage: "terminal")
+                        }
+                        Divider()
+                        Button(role: .destructive) {
+                            unlinkWorkspace()
+                        } label: {
+                            Label(l10n.removeWorkspaceLink, systemImage: "link.badge.minus")
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -163,12 +304,12 @@ struct ProjectContextBar: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
         .background(Color(NSColor.textBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.secondary.opacity(0.13), lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.018), radius: 10, x: 0, y: 4)
+        .shadow(color: Color.black.opacity(0.028), radius: 12, x: 0, y: 5)
     }
 
     private func projectName(_ repository: TaskRepositoryRecord) -> String {

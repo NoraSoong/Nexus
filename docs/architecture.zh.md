@@ -7,7 +7,7 @@ flowchart LR
     App["Nexus Mac App"] --> Core["NexusCore"]
     App --> Models["可选模型服务"]
     Core --> Store[("本地 SQLite")]
-    Core --> Git["只读 Git 读取器"]
+    Core --> Git["Git 读取与显式 worktree 创建"]
     Core --> Projection["MCP 投影"]
     Projection --> Store
     Helper["stdio MCP Helper"] --> Projection
@@ -50,8 +50,14 @@ TypeScript Helper 使用 stdio 运行，并从 SQLite 读取稳定投影。它�
 - 每份材料都由用户决定是否对助手可见；隐藏材料不能通过 MCP 读取。
 - 模型调用必须由用户主动发起。
 - 助手读取被暂停或 App 运行状态失效时，MCP 不返回上下文。
-- Git 集成只读；Nexus 不会 checkout、提交、reset、rebase 或删除用户代码。
+- Git 日常状态读取是只读的。用户明确确认“创建隔离代码目录”后，Core 只执行标准 `git worktree add` 并记录绑定；Nexus 不会 checkout、提交、stash、reset、rebase、合并或删除用户代码。
+
+## 代码工作区
+
+一个 Work 可以绑定一个规范化代码目录，一个 Git 仓库可以通过多个 worktree 绑定多个 Work。已有目录标记为 `external`；Nexus 创建的目录标记为 `nexus_created`，并记录基准分支和创建时的 HEAD。主窗口切换 Work 不会改变已经绑定的 MCP workspace。
+
+创建隔离目录时，Core 会在执行 Git 前校验仓库、基准分支、分支名、目标路径和未提交修改。脏目录只有在用户明确确认后才会从当前 HEAD 创建，未提交修改不会被复制。数据库写入失败时只尝试清理本次刚创建的 worktree，不触碰已有代码和分支。
 
 ## 明确不做的事
 
-Nexus 不是 Agent Runner、完整 Git 客户端、云端知识库或项目管理系统。它的任务是让交给现有编码助手的上下文更短、更清楚、经过审核并且可追溯。
+Nexus 不是 Agent Runner、完整 Git 客户端、云端知识库或项目管理系统。它的任务是让交给现有编码助手的上下文更短、更清楚、经过审核并且可追溯，并为并行 Work 提供清晰的代码目录边界。

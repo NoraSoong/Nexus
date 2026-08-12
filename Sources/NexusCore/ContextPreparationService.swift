@@ -158,16 +158,21 @@ public enum ContextPreparationService {
             guard !claim.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw ContextPreparationError.invalidModelOutput("an empty claim was returned")
             }
-            guard !claim.sourceIDs.isEmpty, Set(claim.sourceIDs).isSubset(of: sourceIDs) else {
-                throw ContextPreparationError.invalidModelOutput("a confirmed claim has missing or unknown sources")
+            guard !claim.sourceIDs.isEmpty else {
+                throw ContextPreparationError.invalidSourceCitation(.missingRequiredSource)
+            }
+            let unknownSourceIDs = Set(claim.sourceIDs).subtracting(sourceIDs).sorted()
+            guard unknownSourceIDs.isEmpty else {
+                throw ContextPreparationError.invalidSourceCitation(.unknownSources(unknownSourceIDs))
             }
         }
         for assumption in content.assumptions {
             guard !assumption.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw ContextPreparationError.invalidModelOutput("an empty assumption was returned")
             }
-            guard Set(assumption.sourceIDs).isSubset(of: sourceIDs) else {
-                throw ContextPreparationError.invalidModelOutput("an assumption references an unknown source")
+            let unknownSourceIDs = Set(assumption.sourceIDs).subtracting(sourceIDs).sorted()
+            guard unknownSourceIDs.isEmpty else {
+                throw ContextPreparationError.invalidSourceCitation(.unknownSources(unknownSourceIDs))
             }
         }
         for question in content.questions {
@@ -176,12 +181,21 @@ public enum ContextPreparationService {
                 !question.whyItMatters.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                 Set(question.sourceIDs).isSubset(of: sourceIDs)
             else {
+                let unknownSourceIDs = Set(question.sourceIDs).subtracting(sourceIDs).sorted()
+                if !unknownSourceIDs.isEmpty {
+                    throw ContextPreparationError.invalidSourceCitation(.unknownSources(unknownSourceIDs))
+                }
                 throw ContextPreparationError.invalidModelOutput(
                     "a clarification question is invalid or references an unknown source")
             }
         }
-        for sourceID in content.recommendedSourceIDs where !sourceIDs.contains(sourceID) {
-            throw ContextPreparationError.invalidModelOutput("recommendedSourceIDs contains an unknown source")
+        let unknownRecommendedSourceIDs = Set(content.recommendedSourceIDs)
+            .subtracting(sourceIDs)
+            .sorted()
+        guard unknownRecommendedSourceIDs.isEmpty else {
+            throw ContextPreparationError.invalidSourceCitation(
+                .unknownRecommendedSources(unknownRecommendedSourceIDs)
+            )
         }
         return content
     }

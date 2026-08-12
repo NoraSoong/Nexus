@@ -101,7 +101,11 @@ struct NexusMainView: View {
         }
         .sheet(isPresented: $model.showContextPreparationSheet) {
             ContextPreparationView(model: model)
-                .frame(width: 720, height: 680)
+                .frame(width: 860, height: 760)
+        }
+        .sheet(isPresented: $model.showWorkspaceProvisioningSheet) {
+            WorkspaceProvisioningView(model: model)
+                .frame(width: 620, height: 620)
         }
     }
 
@@ -243,8 +247,8 @@ struct NexusMainView: View {
                         contextMaterialsSection
                     }
                     .padding(.horizontal, 36)
-                    .padding(.vertical, 34)
-                    .frame(maxWidth: 860, alignment: .leading)
+                    .padding(.vertical, 28)
+                    .frame(maxWidth: 980, alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .top)
                 }
             }
@@ -298,14 +302,6 @@ struct NexusMainView: View {
 
             contextStatusStrip
 
-            if let suggestion = model.gitSuggestion {
-                GitSuggestionNotice(suggestion: suggestion, l10n: l10n) {
-                    model.switchToSuggestedGitTask()
-                } dismiss: {
-                    model.dismissGitSuggestion()
-                }
-            }
-
             if model.taskSaveState == .failed {
                 Text(l10n.saveFailed)
                     .font(.caption)
@@ -331,6 +327,21 @@ struct NexusMainView: View {
             },
             chooseRepository: {
                 model.chooseRepository()
+            },
+            createWorkspace: {
+                model.beginWorkspaceProvisioning()
+            },
+            copyWorkspacePath: {
+                model.copySelectedWorkspacePath()
+            },
+            revealWorkspace: {
+                model.revealSelectedWorkspace()
+            },
+            openWorkspaceInTerminal: {
+                model.openSelectedWorkspaceInTerminal()
+            },
+            unlinkWorkspace: {
+                model.unlinkSelectedRepository()
             }
         )
     }
@@ -432,7 +443,8 @@ struct NexusMainView: View {
     }
 
     private func currentContextSection(_ pack: ContextPack) -> some View {
-        WorkCard {
+        let content = ContextTextSanitizer.clean(pack.content)
+        return WorkCard {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .center, spacing: 9) {
                     Image(systemName: currentContextIcon)
@@ -452,7 +464,7 @@ struct NexusMainView: View {
                     .buttonStyle(.bordered)
                 }
 
-                Text(pack.content.brief)
+                Text(content.brief)
                     .font(.body)
                     .foregroundStyle(.primary)
                     .lineLimit(showCurrentContextDetails ? nil : 5)
@@ -469,15 +481,15 @@ struct NexusMainView: View {
                         value: pack.sourceManifest.count,
                         label: l10n.sources
                     )
-                    if !pack.content.constraints.isEmpty {
+                    if !content.constraints.isEmpty {
                         currentContextMetric(
-                            value: pack.content.constraints.count,
+                            value: content.constraints.count,
                             label: l10n.contextConstraints
                         )
                     }
-                    if !pack.content.questions.isEmpty {
+                    if !content.questions.isEmpty {
                         currentContextMetric(
-                            value: pack.content.questions.count,
+                            value: content.questions.count,
                             label: l10n.clarificationQuestions
                         )
                     }
@@ -515,32 +527,48 @@ struct NexusMainView: View {
 
     @ViewBuilder
     private func currentContextDetails(_ pack: ContextPack) -> some View {
+        let content = ContextTextSanitizer.clean(pack.content)
         VStack(alignment: .leading, spacing: 16) {
-            if !pack.content.objective.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if !content.objective.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 currentContextTextSection(
                     title: l10n.contextObjective,
-                    text: pack.content.objective
+                    text: content.objective
                 )
             }
-            currentContextClaimsSection(title: l10n.contextScopeIn, claims: pack.content.scopeIn)
-            currentContextClaimsSection(title: l10n.contextScopeOut, claims: pack.content.scopeOut)
-            currentContextClaimsSection(title: l10n.contextConfirmedFacts, claims: pack.content.confirmedFacts)
-            currentContextClaimsSection(title: l10n.contextConstraints, claims: pack.content.constraints)
+            currentContextClaimsSection(title: l10n.contextScopeIn, claims: content.scopeIn)
+            currentContextClaimsSection(title: l10n.contextScopeOut, claims: content.scopeOut)
+            currentContextClaimsSection(title: l10n.contextConfirmedFacts, claims: content.confirmedFacts)
+            currentContextClaimsSection(title: l10n.contextConstraints, claims: content.constraints)
             currentContextClaimsSection(
                 title: l10n.contextAcceptanceCriteria,
-                claims: pack.content.acceptanceCriteria
+                claims: content.acceptanceCriteria
             )
-            currentContextClaimsSection(title: l10n.contextAssumptions, claims: pack.content.assumptions)
+            currentContextClaimsSection(title: l10n.contextAssumptions, claims: content.assumptions)
+            if !content.assumptions.isEmpty {
+                Text(l10n.contextAssumptionExplanation)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
-            if !pack.content.questions.isEmpty {
+            if !content.questions.isEmpty {
                 VStack(alignment: .leading, spacing: 7) {
                     Text(l10n.clarificationQuestions)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    ForEach(pack.content.questions) { question in
-                        Label(question.question, systemImage: "questionmark.circle")
+                    ForEach(content.questions) { question in
+                        VStack(alignment: .leading, spacing: 3) {
+                            Label(
+                                ContextTextSanitizer.cleanText(question.question),
+                                systemImage: "questionmark.circle"
+                            )
                             .font(.callout)
                             .foregroundStyle(.primary)
+                            Text("\(l10n.whyItMatters): \(ContextTextSanitizer.cleanText(question.whyItMatters))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, 24)
+                        }
                     }
                 }
             }
@@ -570,9 +598,17 @@ struct NexusMainView: View {
                         Circle()
                             .fill(Color.secondary.opacity(0.55))
                             .frame(width: 4, height: 4)
-                        Text(claim.text)
-                            .font(.callout)
-                            .textSelection(.enabled)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(ContextTextSanitizer.cleanText(claim.text))
+                                .font(.callout)
+                                .textSelection(.enabled)
+                            if !claim.sourceIDs.isEmpty {
+                                Text("\(l10n.citedSources): \(claim.sourceIDs.map(model.sourceTitle).joined(separator: ", "))")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                        }
                     }
                 }
             }
@@ -584,7 +620,7 @@ struct NexusMainView: View {
             Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text(text)
+            Text(ContextTextSanitizer.cleanText(text))
                 .font(.callout)
                 .textSelection(.enabled)
         }
@@ -911,6 +947,13 @@ struct NexusMainView: View {
                             Text(model.diagnosticManifest)
                                 .font(.system(.caption, design: .monospaced))
                                 .textSelection(.enabled)
+                            if !model.contextPreparationDiagnostic.isEmpty {
+                                Text(l10n.preparationDiagnostic)
+                                    .font(.caption.weight(.semibold))
+                                Text(model.contextPreparationDiagnostic)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .textSelection(.enabled)
+                            }
                         }
                         .padding(.top, 6)
                     } label: {

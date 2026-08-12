@@ -7,7 +7,7 @@ flowchart LR
     App["Nexus Mac app"] --> Core["NexusCore"]
     App --> Models["Optional model provider"]
     Core --> Store[("Local SQLite")]
-    Core --> Git["Read-only Git reader"]
+    Core --> Git["Git reader and explicit worktree creation"]
     Core --> Projection["MCP projections"]
     Projection --> Store
     Helper["stdio MCP Helper"] --> Projection
@@ -50,8 +50,14 @@ Material freshness and workspace activity are intentionally separate. A code cha
 - Materials are opt-in for assistant visibility; hidden materials remain unreadable through MCP.
 - Model calls require a direct user action.
 - MCP returns no context while assistant access is paused or the app runtime is not active.
-- Git integration is read-only. Nexus never checks out, commits, resets, rebases, or deletes user code.
+- Git status reads are read-only. After an explicit user confirmation, Core may run one standard `git worktree add` and record the binding; Nexus never checks out, commits, stashes, resets, rebases, merges, or deletes user code.
+
+## Code Workspaces
+
+One Work is bound to one normalized code directory. One Git repository can serve multiple Works through separate worktrees. Existing directories are recorded as `external`; directories created by Nexus are recorded as `nexus_created` with their base ref and creation HEAD. Switching the selected Work in the main window never changes an already-bound MCP workspace.
+
+Before creating a directory, Core validates the repository, base ref, branch name, destination, and dirty state. A dirty base requires explicit confirmation and the new directory starts from HEAD without copying uncommitted changes. If persistence fails after Git creates the worktree, Nexus only attempts to clean up that newly created directory.
 
 ## Deliberate Non-Goals
 
-Nexus is not an agent runner, full Git client, cloud knowledge base, or project-management system. Its job is to make the context delivered to existing coding assistants shorter, clearer, reviewed, and traceable.
+Nexus is not an agent runner, full Git client, cloud knowledge base, or project-management system. Its job is to make the context delivered to existing coding assistants shorter, clearer, reviewed, and traceable while giving parallel Work items clear code-directory boundaries.

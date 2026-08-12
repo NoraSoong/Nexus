@@ -135,9 +135,22 @@ public final class OpenAIContextModelClient: ContextModelClient, @unchecked Send
     }
 
     private func shouldRetry(_ error: Error) -> Bool {
-        guard case .outputTruncated(.openAI) = error as? ContextModelError else {
+        if let preparationError = error as? ContextPreparationError {
+            switch preparationError {
+            case .invalidModelOutput, .invalidSourceCitation:
+                return true
+            default:
+                return false
+            }
+        }
+        guard let modelError = error as? ContextModelError else {
             return false
         }
-        return true
+        switch modelError {
+        case .emptyResponse(.openAI), .invalidResponse(.openAI, _), .outputTruncated(.openAI):
+            return true
+        default:
+            return false
+        }
     }
 }

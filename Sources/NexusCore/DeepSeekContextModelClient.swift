@@ -177,10 +177,12 @@ public final class DeepSeekContextModelClient: ContextModelClient, @unchecked Se
 
     private func shouldRetry(_ error: Error) -> Bool {
         if let preparationError = error as? ContextPreparationError {
-            if case .invalidModelOutput = preparationError {
+            switch preparationError {
+            case .invalidModelOutput, .invalidSourceCitation:
                 return true
+            default:
+                return false
             }
-            return false
         }
         guard let modelError = error as? ContextModelError else {
             return false

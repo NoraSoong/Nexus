@@ -49,7 +49,6 @@ final class AppModel: ObservableObject {
     var workingTreeSignaturesByRepo: [String: String] = [:]
     @Published var selectedRepoCurrentBranch = "-"
     @Published var selectedRepoDirtyState: GitWorkingTreeState = .unknown
-    @Published var gitSuggestion: GitBranchSuggestion?
     @Published var handoffNote = ""
     @Published var handoffSaveState: SaveState = .saved
     @Published var latestCheckpoint: CheckpointRecord?
@@ -80,10 +79,15 @@ final class AppModel: ObservableObject {
     @Published var showNewTaskSheet = false
     @Published var showQuickSwitcher = false
     @Published var showAddTextMaterialSheet = false
+    @Published var showContextModelSettings = false
+    @Published var isReplacingContextModelKey = false
     @Published var newTextMaterialTitle = ""
     @Published var newTextMaterialBody = ""
     @Published var newTextMaterialVisible = true
     @Published var showContextPreparationSheet = false
+    @Published var showWorkspaceProvisioningSheet = false
+    @Published var workspaceProvisioningError = ""
+    @Published var isProvisioningWorkspace = false
     let contextPreparation = ContextPreparationModel()
     @Published var currentContextPack: ContextPack?
     @Published var currentContextSourceChanges: [ContextSourceDelta] = []
@@ -102,11 +106,11 @@ final class AppModel: ObservableObject {
     var gitRefreshTask: Task<Void, Never>?
     var gitActivityRefreshTask: Task<Void, Never>?
     var appRefreshTask: Task<Void, Never>?
+    var contextFreshnessTask: Task<Void, Never>?
     var selectedTaskLoadTask: Task<Void, Never>?
     var projectionRefreshTask: Task<Void, Never>?
     var assistantRefreshTask: Task<Void, Never>?
     var contextSourceRefreshTask: Task<Void, Never>?
-    var dismissedGitSuggestionKey: String?
     var contextPreparationTask: Task<Void, Never>?
     var bootstrapTask: Task<Void, Never>?
     let keychainCredentialStore = KeychainCredentialStore()
@@ -274,6 +278,11 @@ final class AppModel: ObservableObject {
         set { updateContextPreparation(\.error, to: newValue) }
     }
 
+    var contextPreparationDiagnostic: String {
+        get { contextPreparation.diagnostic }
+        set { updateContextPreparation(\.diagnostic, to: newValue) }
+    }
+
     var contextAPIKeyInput: String {
         get { contextPreparation.apiKeyInput }
         set { updateContextPreparation(\.apiKeyInput, to: newValue) }
@@ -294,9 +303,12 @@ final class AppModel: ObservableObject {
         set { updateContextPreparation(\.modelProvider, to: newValue) }
     }
 
-    var contextPreparationModelOverride: String? {
-        get { contextPreparation.modelOverride }
-        set { updateContextPreparation(\.modelOverride, to: newValue) }
+    var contextModelSelection: String {
+        get { contextPreparation.modelSelection }
+        set {
+            objectWillChange.send()
+            contextPreparation.modelSelection = newValue
+        }
     }
 
     var hasWorkNotes: Bool {
@@ -378,6 +390,7 @@ final class AppModel: ObservableObject {
                 bootstrapped = true
                 refresh()
                 startGitMonitor()
+                startContextFreshnessMonitor()
             } catch {
                 showToast(l10n.bootstrapFailed)
                 message = "Bootstrap error: \(error)"
@@ -392,7 +405,6 @@ final class AppModel: ObservableObject {
             guard let self else { return }
             do {
                 let data = try await performStoreOperation(priority: .utility) { store in
-                    try store.refreshActiveContextFreshness()
                     let tasks = try store.listTasks()
                     let repositories = try store.listRepositories()
                     return AppRefreshData(
@@ -419,18 +431,40 @@ final class AppModel: ObservableObject {
     }
 
     private func applyRefreshData(_ data: AppRefreshData) {
-        tasks = data.tasks
-        taskRepositoriesByID = Dictionary(uniqueKeysWithValues: data.repositories.map { ($0.taskID, $0) })
-        workspaceBindingsByTaskID = Dictionary(
+        let previousTasks = tasks
+        let previousRepositoryPaths = Set(taskRepositoriesByID.values.map(\.path))
+        let previousSelectedTaskID = selectedTaskID
+        let previousActiveTaskID = activeTaskID
+        let previousRevision = revision
+        let nextRepositories = Dictionary(uniqueKeysWithValues: data.repositories.map { ($0.taskID, $0) })
+        let nextBindings = Dictionary(
             grouping: data.workspaceBindings,
             by: \.taskID
         ).compactMapValues(\.first)
-        workspaceInfoByTaskID = data.workspaceInfoByTaskID
+        let nextRepositoryPaths = Set(nextRepositories.values.map(\.path))
+        if tasks != data.tasks {
+            tasks = data.tasks
+        }
+        if taskRepositoriesByID != nextRepositories {
+            taskRepositoriesByID = nextRepositories
+        }
+        if workspaceBindingsByTaskID != nextBindings {
+            workspaceBindingsByTaskID = nextBindings
+        }
+        if workspaceInfoByTaskID != data.workspaceInfoByTaskID {
+            workspaceInfoByTaskID = data.workspaceInfoByTaskID
+        }
         let projectIDs = Set(sidebarProjectGroups.map(\.id))
-        availableWorktreesByProjectID = availableWorktreesByProjectID.filter {
+        let filteredWorktrees = availableWorktreesByProjectID.filter {
             projectIDs.contains($0.key)
         }
-        refreshCurrentBranches()
+        if availableWorktreesByProjectID != filteredWorktrees {
+            availableWorktreesByProjectID = filteredWorktrees
+        }
+        applyCachedGitState()
+        if previousRepositoryPaths != nextRepositoryPaths {
+            refreshCurrentBranches()
+        }
         let active = data.activeTask
         activeTaskID = active?.taskID
         let activeTaskRecord = active.flatMap { active in
@@ -447,8 +481,45 @@ final class AppModel: ObservableObject {
             }
             selectedTaskID = activeVisibleID ?? visibleWorkTasks.first?.id ?? active?.taskID ?? tasks.first?.id
         }
-        loadSelectedTask()
-        refreshAssistantView()
+        let previousSelectedTask = previousSelectedTaskID.flatMap { id in
+            previousTasks.first(where: { $0.id == id })
+        }
+        let selectedTask = selectedTaskID.flatMap { id in
+            tasks.first(where: { $0.id == id })
+        }
+        let shouldReloadSelectedTask = previousSelectedTaskID != selectedTaskID
+            || previousSelectedTask == nil
+            || previousSelectedTask != selectedTask
+        if shouldReloadSelectedTask {
+            loadSelectedTask()
+        }
+        if previousActiveTaskID != activeTaskID
+            || previousRevision != revision
+            || !assistantProjectionReady
+        {
+            refreshAssistantView()
+        }
+    }
+
+    private func startContextFreshnessMonitor() {
+        guard contextFreshnessTask == nil else { return }
+        contextFreshnessTask = Task { @MainActor [weak self] in
+            var firstPass = true
+            while !Task.isCancelled {
+                guard let self else { return }
+                let changed =
+                    (try? await self.performStoreOperation(priority: .utility) { store in
+                        try store.refreshActiveContextFreshness()
+                    }) ?? false
+                guard !Task.isCancelled else { return }
+                if changed {
+                    self.refresh()
+                }
+                let delay: UInt64 = firstPass ? 1_000_000_000 : 30_000_000_000
+                firstPass = false
+                try? await Task.sleep(nanoseconds: delay)
+            }
+        }
     }
 
     func createTask(openWindow: OpenWindowAction? = nil) {
@@ -573,7 +644,6 @@ final class AppModel: ObservableObject {
                 currentGitActivity = data.gitActivity
                 refreshCurrentContextSourceChanges()
                 refreshProjectionPreview()
-                updateGitSuggestion()
                 isLoadingSelectedTask = false
             } catch is CancellationError {
                 return

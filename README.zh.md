@@ -44,17 +44,19 @@ flowchart LR
 - Work 创建、编辑、归档、恢复与删除；
 - 本地文件和粘贴文本材料，逐项控制助手可见性；
 - 以流式方式提取 UTF-8 与 UTF-16 文本，遵守单项预算和 64 MiB 硬性安全上限；
-- DeepSeek 与 OpenAI 上下文整理，API Key 分别保存在 macOS 钥匙串；
+- DeepSeek 与 OpenAI 上下文整理，API Key 分别保存在 macOS 钥匙串；DeepSeek 可在 Flash（日常整理）与 Pro（复杂材料）之间选择；
+- 每次整理使用 `S1`、`S2` 等仅供模型使用的内部引用，Nexus 在保存前还原为稳定的真实来源 ID，不会把这些标记展示给用户或助手；
 - 模型达到输出上限时自动进行一次压缩重试；
 - 带来源的目标、范围、事实、约束、验收条件、假设和待确认问题；
 - Context Pack 审核、差异查看、采用和材料变化后的过期提示；
 - Git 仓库、分支和已有 worktree 关联，以及基于确认版本的提交与工作区变化摘要；
 - 材料新鲜度与代码活动分离：普通编码不会把需求上下文错误标记为过期；
 - workspace binding：同一仓库的不同 worktree 可固定到不同 Work；
+- 工作区关联失败时明确说明目录、绑定冲突或路径问题，并引导选择其他 worktree；
 - 只读 stdio MCP Helper，分层返回确认上下文、材料新鲜度、工作区活动和流式分页材料；
 - App 未运行或助手读取被暂停时，不暴露 Nexus MCP tools。
 
-Nexus 不运行编码 Agent，不替用户决定实现方案，也不自动创建、合并或删除 worktree。
+Nexus 不运行编码 Agent，不替用户决定实现方案，也不自动切换、合并或删除代码。用户明确确认后，它可以创建标准 Git worktree，并把新目录绑定到当前 Work。
 
 ## 环境要求
 
@@ -102,7 +104,7 @@ Nexus 默认把数据保存到：
 
 1. 启动 Nexus，从菜单栏打开主窗口。
 2. 新建 Work，填写标题和一句话目标。
-3. 可选：关联一个本地 Git 主目录或已有 worktree。
+3. 可选：选择已有代码目录，或让 Nexus 创建一个隔离代码目录。
 4. 拖入相关文件，或添加一段文本材料。
 5. 设置每份材料是否可供助手读取。
 6. 需要时填写一段可选的“补充说明”。
@@ -141,7 +143,7 @@ codex mcp add nexus \
   -- "$HOME/Library/Application Support/Nexus/bin/nexus-mcp"
 ```
 
-固定到一个已有 worktree：
+固定到一个已有代码目录：
 
 ```bash
 codex mcp add nexus-worktree \
@@ -163,10 +165,17 @@ codex mcp add nexus-worktree \
 - MCP 当前只读；
 - Hidden 材料不能通过 MCP 读取；
 - 模型调用只由用户主动触发；
+- 模型凭据通过 App 内的小型连接设置管理，仅保存在本机；
 - API Key 不写入 SQLite，也不会通过 MCP 暴露；
 - 草稿失败、取消或未采用时，不改变当前 Context Pack；
 - 空文件、二进制、无效编码、不支持类型和超大文件会以不同原因排除；
-- Git 集成只读取状态、提交摘要和受预算控制的变更证据，不执行 `checkout`、`stash`、`reset` 或提交。
+- Git 集成只读取状态、提交摘要和受预算控制的变更证据。用户明确确认后，Nexus 可以执行一次标准 `git worktree add` 创建隔离代码目录，但不会 checkout、stash、reset、提交、合并或删除用户代码。
+
+### 并行代码工作与开发工具
+
+同一个 Git 仓库如果要并行处理多个 Work，需要多个独立代码目录。创建 Work 后，在代码区选择“创建隔离代码目录”，确认基准分支、新分支和目标路径即可。创建成功后，复制目录路径，在你常用的开发工具中分别打开不同目录，例如 IDEA、VS Code、Xcode、Cursor 或终端；Nexus 不安装编辑器插件，也不会自动切换分支。
+
+归档或删除 Work 不会删除 Nexus 创建的目录或 Git 分支。解除 Nexus 关联只移除绑定，代码仍留在本机。
 
 ## 项目文档
 

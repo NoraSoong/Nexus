@@ -95,7 +95,7 @@ enum ProjectionPayloadBuilder {
         let manifestPayload = try jsonString(manifestObject)
 
         let resolvedBrief =
-            contextPack?.content.brief
+            contextPack.map { ContextTextSanitizer.clean($0.content).brief }
             ?? resumeBrief(
                 task: task,
                 checkpoint: checkpoint,
@@ -122,11 +122,12 @@ enum ProjectionPayloadBuilder {
             briefObject["repository"] = repoProjection(repository, activity: gitActivity)
         }
         if let contextPack {
+            let content = ContextTextSanitizer.clean(contextPack.content)
             briefObject["context_pack_id"] = contextPack.id
             briefObject["context_revision"] = contextPack.revision
             briefObject["effective_freshness"] = contextPack.freshness
             briefObject["stale_reason"] = contextPack.staleReason ?? NSNull()
-            briefObject["open_questions"] = contextPack.content.questions.map { question in
+            briefObject["open_questions"] = content.questions.map { question in
                 [
                     "id": question.id,
                     "question": question.question,
@@ -243,7 +244,7 @@ enum ProjectionPayloadBuilder {
     private static func contextPackObject(_ pack: ContextPack) throws -> [String: Any] {
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
-        let data = try encoder.encode(pack.content)
+        let data = try encoder.encode(ContextTextSanitizer.clean(pack.content))
         var object = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
         object["id"] = pack.id
         object["revision"] = pack.revision
