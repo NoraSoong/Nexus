@@ -2,7 +2,7 @@
 
 import { ProjectionDatabase, type BindingSelection } from "./sqlite/ProjectionDatabase.js";
 import { runMcpServer } from "./mcpServer.js";
-import { helperVersion } from "./version.js";
+import { helperVersion, mcpSdkVersion } from "./version.js";
 
 const args = process.argv.slice(2);
 const selection = bindingSelection(args);
@@ -15,7 +15,7 @@ if (args.includes("--version")) {
 
 if (args.includes("--doctor")) {
   const db = new ProjectionDatabase(undefined, selection);
-  console.log(JSON.stringify(db.doctor(), null, 2));
+  console.log(JSON.stringify({ helperVersion, mcpSdkVersion, ...db.doctor() }, null, 2));
   process.exit(0);
 }
 

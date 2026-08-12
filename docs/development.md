@@ -19,6 +19,8 @@ Workspace association is intentionally one-to-one by normalized workspace path. 
 
 The MCP helper is pinned through `adapters/mcp/package-lock.json`. Do not use floating dependency versions for the helper.
 
+The Apple Silicon Developer Preview is built with `scripts/build-preview.sh`. It embeds the pinned official Node Runtime and Helper resources in a real `Nexus.app`; `scripts/verify-preview.sh` checks the Bundle, Runtime, `node:sqlite`, DMG, and checksum. The preview is not signed or notarized.
+
 ## Local Data
 
 By default, Nexus stores product data in:
@@ -60,6 +62,13 @@ Build the MCP helper:
 cd adapters/mcp
 npm ci
 npm run build
+```
+
+Build the preview package without changing the source checkout's installed dependencies:
+
+```bash
+scripts/build-preview.sh
+scripts/verify-preview.sh
 ```
 
 ## Verify

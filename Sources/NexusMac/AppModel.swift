@@ -384,6 +384,7 @@ final class AppModel: ObservableObject {
             guard let self else { return }
             defer { bootstrapTask = nil }
             do {
+                await installBundledHelperIfAvailable()
                 try await performStoreOperation { store in
                     try store.bootstrap()
                 }

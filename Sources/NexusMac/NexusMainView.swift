@@ -752,6 +752,11 @@ struct NexusMainView: View {
                         .foregroundStyle(.secondary)
                     Menu {
                         Button {
+                            chooseFiles()
+                        } label: {
+                            Label(l10n.chooseFiles, systemImage: "folder")
+                        }
+                        Button {
                             model.addClipboardTextMaterial()
                         } label: {
                             Label(l10n.pasteClipboard, systemImage: "doc.on.clipboard")
@@ -822,35 +827,65 @@ struct NexusMainView: View {
     }
 
     private var fileDropZone: some View {
-        RoundedRectangle(cornerRadius: 10)
-            .strokeBorder(style: StrokeStyle(lineWidth: model.contextMaterialCount == 0 ? 1.35 : 1, dash: [6, 5]))
-            .foregroundStyle(
-                model.isDropTargeted
-                    ? Color.accentColor : Color.secondary.opacity(model.contextMaterialCount == 0 ? 0.42 : 0.24)
-            )
-            .background(Color.secondary.opacity(model.contextMaterialCount == 0 ? 0.026 : 0.014))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay {
-                VStack(spacing: model.contextMaterialCount == 0 ? 6 : 2) {
-                    Image(systemName: "doc.badge.plus")
-                        .font(model.contextMaterialCount == 0 ? .body : .caption)
-                    if model.contextMaterialCount == 0 {
-                        Text(l10n.dropLocalFilesHere)
-                            .font(.callout.weight(.medium))
-                        Text(l10n.originalFilesStayOnDisk)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text(l10n.dropFiles)
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
+        Button {
+            chooseFiles()
+        } label: {
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(
+                    style: StrokeStyle(
+                        lineWidth: model.contextMaterialCount == 0 ? 1.35 : 1,
+                        dash: [6, 5]
+                    )
+                )
+                .foregroundStyle(
+                    model.isDropTargeted
+                        ? Color.accentColor
+                        : Color.secondary.opacity(model.contextMaterialCount == 0 ? 0.42 : 0.24)
+                )
+                .background(Color.secondary.opacity(model.contextMaterialCount == 0 ? 0.026 : 0.014))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay {
+                    VStack(spacing: model.contextMaterialCount == 0 ? 6 : 2) {
+                        Image(systemName: "doc.badge.plus")
+                            .font(model.contextMaterialCount == 0 ? .body : .caption)
+                        if model.contextMaterialCount == 0 {
+                            Text(l10n.dropLocalFilesHere)
+                                .font(.callout.weight(.medium))
+                            Text(l10n.filePickerHint)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(l10n.dropFiles)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
-            }
-            .frame(height: model.contextMaterialCount == 0 ? 104 : 44)
-            .onDrop(of: [UTType.fileURL.identifier], isTargeted: $model.isDropTargeted) { providers in
-                model.handleDrop(providers: providers)
-            }
+                .frame(height: model.contextMaterialCount == 0 ? 104 : 44)
+        }
+        .buttonStyle(.plain)
+        .contentShape(RoundedRectangle(cornerRadius: 10))
+        .onDrop(of: [UTType.fileURL.identifier], isTargeted: $model.isDropTargeted) { providers in
+            model.handleDrop(providers: providers)
+        }
+        .help(l10n.chooseFiles)
+    }
+
+    private func chooseFiles() {
+        guard model.selectedTaskID != nil else { return }
+        let panel = NSOpenPanel()
+        panel.title = l10n.chooseFiles
+        panel.prompt = l10n.add
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        panel.resolvesAliases = true
+        panel.allowedContentTypes = [.item]
+        guard panel.runModal() == .OK else { return }
+        guard let taskID = model.selectedTaskID else { return }
+        for url in panel.urls {
+            model.addFile(url: url, taskID: taskID)
+        }
     }
 
     private var inspector: some View {

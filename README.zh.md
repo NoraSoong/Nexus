@@ -11,7 +11,7 @@ Nexus 是 Mac 上面向编码助手的本地优先可信工作上下文层。
 
 它把需求说明、接口样例、SQL、日志、代码文件和人的补充说明，整理成一份短小、可审核、带来源的 **Context Pack**，并把后续代码变化作为独立证据持续交接。确认后的上下文可通过 MCP 供 Codex、Claude 等编码助手按需读取，原始材料不会被默认全部塞进模型。
 
-> 当前状态：pre-alpha 本地原型，可用于 dogfooding。正式 App Bundle、私有 Helper runtime、签名、公证和 DMG 尚未完成。
+> 当前状态：pre-alpha Apple Silicon Developer Preview。预览版 DMG 已包含私有 Node Runtime 和 MCP Helper，但暂未进行 Developer ID 签名和公证。
 
 ## 为什么使用 Nexus
 
@@ -60,7 +60,9 @@ Nexus 不运行编码 Agent，不替用户决定实现方案，也不自动切�
 
 ## 环境要求
 
-当前开发基线：
+Developer Preview 仅支持 Apple Silicon Mac，系统要求 macOS 14 或更高版本。DMG 已内置 Node.js，普通用户不需要自行安装 Node。
+
+源码开发基线：
 
 - macOS 14 或更高版本；
 - Xcode 26.5 / Swift 6.3.2；
@@ -70,6 +72,17 @@ Nexus 不运行编码 Agent，不替用户决定实现方案，也不自动切�
 MCP Helper 使用 `node:sqlite`，不依赖系统 SQLite CLI 或第三方 native addon。
 
 ## 构建与运行
+
+构建 Apple Silicon Developer Preview DMG：
+
+```bash
+scripts/build-preview.sh
+scripts/verify-preview.sh
+```
+
+DMG 输出在 `dist/preview/`。构建过程会下载固定版本的官方 Node Runtime，校验 SHA-256 后嵌入 `Nexus.app`；Runtime 不会提交到仓库。
+
+预览版暂未进行 Developer ID 签名和公证。macOS 可能需要在 Finder 中按系统提示确认打开本地预览应用。
 
 构建并测试 Swift：
 
@@ -117,7 +130,9 @@ Nexus 默认把数据保存到：
 
 ## MCP Helper
 
-安装开发用 helper shim：
+通过 Developer Preview DMG 安装后，首次启动 Nexus 会自动把内置 Helper 安装到本机 Nexus Application Support 目录，并创建下面的稳定命令路径。普通用户不需要安装 Node，也不需要手动执行 Helper 安装脚本。
+
+源码开发时才需要安装开发用 helper shim：
 
 ```bash
 scripts/install-helper.sh
@@ -135,6 +150,8 @@ scripts/install-helper.sh
 "$HOME/Library/Application Support/Nexus/bin/nexus-mcp" --version
 "$HOME/Library/Application Support/Nexus/bin/nexus-mcp" --doctor
 ```
+
+`--doctor` 会报告 Helper 版本、MCP SDK 版本、私有 Node 版本、SQLite 适配器、数据库、App 运行状态和投影兼容性。
 
 Codex 配置示例：
 
@@ -181,6 +198,7 @@ codex mcp add nexus-worktree \
 
 - [架构说明](docs/architecture.zh.md)
 - [开发指南](docs/development.zh.md)
+- [Developer Preview 发布说明](docs/release.zh.md)
 - [参与贡献](CONTRIBUTING.md)
 - [安全策略](SECURITY.md)
 - [助手规则示例](docs/agent-rules.zh.md)
