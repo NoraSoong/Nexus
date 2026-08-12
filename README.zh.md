@@ -37,6 +37,12 @@ Nexus 不替代编码助手。助手负责探索和修改代码；Nexus 负责�
   <img src="docs/diagrams/core-loop.zh.svg" alt="Nexus 上下文闭环" width="1100">
 </p>
 
+## 界面示例
+
+<p align="center">
+  <img src="docs/images/nexus-current-context-zh.png" alt="Nexus 当前上下文界面" width="1100">
+</p>
+
 模型输出始终是草稿。只有用户明确采用后，Context Pack 才会成为当前 Work 的上下文并通过 MCP 暴露。
 
 ## Nexus 解决什么问题
