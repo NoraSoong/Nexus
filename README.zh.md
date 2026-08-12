@@ -33,16 +33,9 @@ Nexus 不替代编码助手。助手负责探索和修改代码；Nexus 负责�
 
 ## 核心闭环
 
-```mermaid
-flowchart LR
-    Materials["选定材料"] --> Draft["整理草稿"]
-    Draft --> Review["用户审核"]
-    Review --> Pack["已确认 Context Pack"]
-    Pack --> MCP["受控 MCP 上下文"]
-    MCP --> Assistant["Codex / Claude / 其他助手"]
-    Assistant --> Git["工作区代码变化"]
-    Git --> Draft
-```
+<p align="center">
+  <img src="docs/diagrams/core-loop.zh.svg" alt="Nexus 上下文闭环" width="1100">
+</p>
 
 模型输出始终是草稿。只有用户明确采用后，Context Pack 才会成为当前 Work 的上下文并通过 MCP 暴露。
 

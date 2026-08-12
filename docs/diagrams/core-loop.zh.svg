@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 420" role="img" aria-labelledby="title desc">
+  <title id="title">Nexus 上下文闭环</title>
+  <desc id="desc">选定材料经过整理和审核形成当前上下文，通过 MCP 按需交付给编码助手，代码变化再成为下一次更新的证据。</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Helvetica Neue", Arial, sans-serif; }
+    .panel { fill: #f8f9fc; stroke: #e6e8f0; }
+    .card { fill: #ffffff; stroke: #e4e7ef; }
+    .ink { fill: #202532; }
+    .muted { fill: #73798a; }
+    .faint { fill: #a3a8b7; }
+    .line { stroke: #c8cddd; }
+    .accent { fill: #7357e8; }
+    .accent-soft { fill: #eeeaff; }
+    .blue { fill: #3c7eea; }
+    .blue-soft { fill: #eaf2ff; }
+    .green { fill: #269b76; }
+    .green-soft { fill: #e6f7f0; }
+    .orange { fill: #bf6b32; }
+    .orange-soft { fill: #fff1e7; }
+    @media (prefers-color-scheme: dark) {
+      .panel { fill: #151821; stroke: #2c3040; }
+      .card { fill: #1d212c; stroke: #343949; }
+      .ink { fill: #f2f3f7; }
+      .muted { fill: #aeb3c2; }
+      .faint { fill: #7d8394; }
+      .line { stroke: #555b6e; }
+      .accent-soft { fill: #2d2653; }
+      .blue-soft { fill: #1f3357; }
+      .green-soft { fill: #173c31; }
+      .orange-soft { fill: #4a2f20; }
+    }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#a5aabd"/>
+    </marker>
+    <marker id="arrow-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7357e8"/>
+    </marker>
+  </defs>
+
+  <rect class="panel" x="10" y="10" width="1380" height="400" rx="30"/>
+
+  <circle class="accent" cx="58" cy="66" r="17"/>
+  <circle fill="#ffffff" cx="58" cy="66" r="5"/>
+  <circle fill="#ffffff" opacity=".72" cx="47" cy="66" r="3.5"/>
+  <circle fill="#ffffff" opacity=".72" cx="69" cy="66" r="3.5"/>
+  <path d="M50 66h16" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity=".72"/>
+  <text class="ink" x="91" y="65" font-size="18" font-weight="700" letter-spacing="2">NEXUS / 上下文闭环</text>
+  <text class="muted" x="91" y="91" font-size="16">先整理，再确认；按需交付，持续交接。</text>
+
+  <g transform="translate(48 138)">
+    <rect class="card" width="220" height="132" rx="18"/>
+    <circle class="accent-soft" cx="31" cy="31" r="18"/>
+    <text class="accent" x="31" y="37" text-anchor="middle" font-size="15" font-weight="700">01</text>
+    <text class="ink" x="24" y="76" font-size="21" font-weight="700">收集材料</text>
+    <text class="muted" x="24" y="103" font-size="15">选出真正相关的内容</text>
+  </g>
+  <path class="line" d="M280 204h38" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <g transform="translate(328 138)">
+    <rect class="card" width="220" height="132" rx="18"/>
+    <circle class="orange-soft" cx="31" cy="31" r="18"/>
+    <text class="orange" x="31" y="37" text-anchor="middle" font-size="15" font-weight="700">02</text>
+    <text class="ink" x="24" y="76" font-size="21" font-weight="700">审核草稿</text>
+    <text class="muted" x="24" y="103" font-size="15">看清不确定的地方</text>
+  </g>
+  <path class="line" d="M560 204h38" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <g transform="translate(608 138)">
+    <rect class="card" width="220" height="132" rx="18"/>
+    <circle class="green-soft" cx="31" cy="31" r="18"/>
+    <text class="green" x="31" y="37" text-anchor="middle" font-size="15" font-weight="700">03</text>
+    <text class="ink" x="24" y="76" font-size="21" font-weight="700">确认上下文</text>
+    <text class="muted" x="24" y="103" font-size="15">采用一份共同依据</text>
+  </g>
+  <path class="line" d="M840 204h38" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <g transform="translate(888 138)">
+    <rect class="card" width="220" height="132" rx="18"/>
+    <circle class="blue-soft" cx="31" cy="31" r="18"/>
+    <text class="blue" x="31" y="37" text-anchor="middle" font-size="15" font-weight="700">04</text>
+    <text class="ink" x="24" y="76" font-size="21" font-weight="700">交付助手</text>
+    <text class="muted" x="24" y="103" font-size="15">通过 MCP 按需读取</text>
+  </g>
+  <path class="line" d="M1120 204h38" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <g transform="translate(1168 138)">
+    <rect class="card" width="220" height="132" rx="18"/>
+    <circle class="accent-soft" cx="31" cy="31" r="18"/>
+    <text class="accent" x="31" y="37" text-anchor="middle" font-size="15" font-weight="700">05</text>
+    <text class="ink" x="24" y="76" font-size="21" font-weight="700">继续开发</text>
+    <text class="muted" x="24" y="103" font-size="15">代码变化成为证据</text>
+  </g>
+
+  <path d="M1278 293 C1278 354 1090 365 700 365 C310 365 122 354 122 293" fill="none" stroke="#7357e8" stroke-width="2" stroke-dasharray="6 8" marker-end="url(#arrow-accent)"/>
+  <text class="faint" x="700" y="391" text-anchor="middle" font-size="15">一份短小的当前上下文，带着证据持续向前。</text>
+</svg>

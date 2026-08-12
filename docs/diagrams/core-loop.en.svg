@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 420" role="img" aria-labelledby="title desc">
+  <title id="title">Nexus context loop</title>
+  <desc id="desc">Selected materials become a reviewed context pack, reach coding assistants through MCP, and return as code evidence for the next update.</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif; }
+    .panel { fill: #f8f9fc; stroke: #e6e8f0; }
+    .card { fill: #ffffff; stroke: #e4e7ef; }
+    .ink { fill: #202532; }
+    .muted { fill: #73798a; }
+    .faint { fill: #a3a8b7; }
+    .line { stroke: #c8cddd; }
+    .accent { fill: #7357e8; }
+    .accent-soft { fill: #eeeaff; }
+    .blue { fill: #3c7eea; }
+    .blue-soft { fill: #eaf2ff; }
+    .green { fill: #269b76; }
+    .green-soft { fill: #e6f7f0; }
+    .orange { fill: #bf6b32; }
+    .orange-soft { fill: #fff1e7; }
+    @media (prefers-color-scheme: dark) {
+      .panel { fill: #151821; stroke: #2c3040; }
+      .card { fill: #1d212c; stroke: #343949; }
+      .ink { fill: #f2f3f7; }
+      .muted { fill: #aeb3c2; }
+      .faint { fill: #7d8394; }
+      .line { stroke: #555b6e; }
+      .accent-soft { fill: #2d2653; }
+      .blue-soft { fill: #1f3357; }
+      .green-soft { fill: #173c31; }
+      .orange-soft { fill: #4a2f20; }
+    }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#a5aabd"/>
+    </marker>
+    <marker id="arrow-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7357e8"/>
+    </marker>
+  </defs>
+
+  <rect class="panel" x="10" y="10" width="1380" height="400" rx="30"/>
+
+  <circle class="accent" cx="58" cy="66" r="17"/>
+  <circle fill="#ffffff" cx="58" cy="66" r="5"/>
+  <circle fill="#ffffff" opacity=".72" cx="47" cy="66" r="3.5"/>
+  <circle fill="#ffffff" opacity=".72" cx="69" cy="66" r="3.5"/>
+  <path d="M50 66h16" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity=".72"/>
+  <text class="ink" x="91" y="65" font-size="18" font-weight="700" letter-spacing="2">NEXUS / CONTEXT LOOP</text>
+  <text class="muted" x="91" y="91" font-size="16">Prepare once. Review clearly. Continue anywhere.</text>
+
+  <g transform="translate(48 138)">
+    <rect class="card" width="220" height="132" rx="18"/>
+    <circle class="accent-soft" cx="31" cy="31" r="18"/>
+    <text class="accent" x="31" y="37" text-anchor="middle" font-size="15" font-weight="700">01</text>
+    <text class="ink" x="24" y="76" font-size="21" font-weight="700">Gather</text>
+    <text class="muted" x="24" y="103" font-size="15">Pick the materials</text>
+  </g>
+  <path class="line" d="M280 204h38" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <g transform="translate(328 138)">
+    <rect class="card" width="220" height="132" rx="18"/>
+    <circle class="orange-soft" cx="31" cy="31" r="18"/>
+    <text class="orange" x="31" y="37" text-anchor="middle" font-size="15" font-weight="700">02</text>
+    <text class="ink" x="24" y="76" font-size="21" font-weight="700">Review</text>
+    <text class="muted" x="24" y="103" font-size="15">Resolve uncertainty</text>
+  </g>
+  <path class="line" d="M560 204h38" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <g transform="translate(608 138)">
+    <rect class="card" width="220" height="132" rx="18"/>
+    <circle class="green-soft" cx="31" cy="31" r="18"/>
+    <text class="green" x="31" y="37" text-anchor="middle" font-size="15" font-weight="700">03</text>
+    <text class="ink" x="24" y="76" font-size="21" font-weight="700">Confirm</text>
+    <text class="muted" x="24" y="103" font-size="15">Approve the pack</text>
+  </g>
+  <path class="line" d="M840 204h38" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <g transform="translate(888 138)">
+    <rect class="card" width="220" height="132" rx="18"/>
+    <circle class="blue-soft" cx="31" cy="31" r="18"/>
+    <text class="blue" x="31" y="37" text-anchor="middle" font-size="15" font-weight="700">04</text>
+    <text class="ink" x="24" y="76" font-size="21" font-weight="700">Deliver</text>
+    <text class="muted" x="24" y="103" font-size="15">MCP, on demand</text>
+  </g>
+  <path class="line" d="M1120 204h38" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <g transform="translate(1168 138)">
+    <rect class="card" width="220" height="132" rx="18"/>
+    <circle class="accent-soft" cx="31" cy="31" r="18"/>
+    <text class="accent" x="31" y="37" text-anchor="middle" font-size="15" font-weight="700">05</text>
+    <text class="ink" x="24" y="76" font-size="21" font-weight="700">Continue</text>
+    <text class="muted" x="24" y="103" font-size="15">Code becomes evidence</text>
+  </g>
+
+  <path d="M1278 293 C1278 354 1090 365 700 365 C310 365 122 354 122 293" fill="none" stroke="#7357e8" stroke-width="2" stroke-dasharray="6 8" marker-end="url(#arrow-accent)"/>
+  <text class="faint" x="700" y="391" text-anchor="middle" font-size="15">One compact context, carried forward with evidence.</text>
+</svg>

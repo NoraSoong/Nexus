@@ -33,16 +33,9 @@ Nexus does not replace your coding assistant. The assistant explores and edits c
 
 ## The Core Loop
 
-```mermaid
-flowchart LR
-    Materials["Selected materials"] --> Draft["Prepared draft"]
-    Draft --> Review["Human review"]
-    Review --> Pack["Approved Context Pack"]
-    Pack --> MCP["Controlled MCP context"]
-    MCP --> Assistant["Codex / Claude / other assistants"]
-    Assistant --> Git["Workspace changes"]
-    Git --> Draft
-```
+<p align="center">
+  <img src="docs/diagrams/core-loop.en.svg" alt="Nexus context loop" width="1100">
+</p>
 
 Model output is always a draft. It changes the context exposed through MCP only after explicit user approval.
 
