@@ -11,7 +11,8 @@ permissions:
 jobs:
   release:
     name: Build Apple Silicon DMG
-    runs-on: macos-14
+    # Swift tools 6.0 requires the Swift 6 toolchain provided by macOS 15.
+    runs-on: macos-15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
