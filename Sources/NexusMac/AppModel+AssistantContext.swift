@@ -147,7 +147,9 @@ extension AppModel {
                     agentHiddenFiles = fallbackFiles.filter { !$0.isVisibleToAgent }.map(ProjectionJSON.filePreview)
                     return
                 }
-                resumeBriefText = ProjectionJSON.brief(from: snapshot.resumeBriefJSON) ?? snapshot.resumeBriefJSON
+                resumeBriefText = ContextTextSanitizer.cleanGeneratedText(
+                    ProjectionJSON.brief(from: snapshot.resumeBriefJSON) ?? snapshot.resumeBriefJSON
+                )
                 let manifestFiles = ProjectionJSON.files(from: snapshot.manifestJSON, key: "files")
                 let manifestHiddenFiles = ProjectionJSON.files(from: snapshot.manifestJSON, key: "hidden_files")
                 agentReadableFiles =
@@ -213,12 +215,13 @@ extension AppModel {
                 diagnosticManifest = ProjectionJSON.prettyString(snapshot.manifestJSON)
                 assistantHandoffNote = HandoffText.clean(
                     ProjectionJSON.string(from: snapshot.manifestJSON, key: "supplement") ?? assistantHandoffNote)
-                assistantContextPackBrief =
+                assistantContextPackBrief = ContextTextSanitizer.cleanGeneratedText(
                     ProjectionJSON.nestedString(
                         from: snapshot.manifestJSON,
                         objectKey: "context_pack",
                         key: "brief"
                     ) ?? ""
+                )
                 assistantReadableFiles = ProjectionJSON.files(from: snapshot.manifestJSON, key: "files")
                 assistantHiddenFiles = ProjectionJSON.files(from: snapshot.manifestJSON, key: "hidden_files")
             } catch is CancellationError {

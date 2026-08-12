@@ -4,7 +4,7 @@ import XCTest
 @testable import NexusCore
 
 final class ProjectionSchemaMigrationTests: XCTestCase {
-    func testV1DatabaseMigratesToV3WithoutLosingTasks() throws {
+    func testV1DatabaseMigratesToV4WithoutLosingTasks() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -34,7 +34,7 @@ final class ProjectionSchemaMigrationTests: XCTestCase {
 
         XCTAssertEqual(try store.listTasks().map(\.id), ["legacy"])
         let migrated = try SQLiteDatabase(url: databaseURL)
-        XCTAssertEqual(try migrated.queryOne("PRAGMA user_version;")?["user_version"], "3")
+        XCTAssertEqual(try migrated.queryOne("PRAGMA user_version;")?["user_version"], "4")
         XCTAssertEqual(
             try migrated.queryOne("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'context_packs';")?[
                 "name"],
@@ -92,7 +92,10 @@ final class ProjectionSchemaMigrationTests: XCTestCase {
         XCTAssertTrue(columns.contains("anchor_head_sha"))
         XCTAssertTrue(columns.contains("anchor_branch"))
         XCTAssertTrue(columns.contains("anchor_captured_at"))
-        XCTAssertEqual(try migrated.queryOne("PRAGMA user_version;")?["user_version"], "3")
+        XCTAssertTrue(columns.contains("workspace_origin"))
+        XCTAssertTrue(columns.contains("base_ref"))
+        XCTAssertTrue(columns.contains("created_head_sha"))
+        XCTAssertEqual(try migrated.queryOne("PRAGMA user_version;")?["user_version"], "4")
     }
 
     func testStoreMigratesOnlyOnceAcrossRepeatedOperations() throws {

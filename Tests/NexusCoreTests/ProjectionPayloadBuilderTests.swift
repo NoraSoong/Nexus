@@ -114,4 +114,64 @@ final class ProjectionPayloadBuilderTests: XCTestCase {
         XCTAssertNil(workspaceActivity["uncommitted_diff"])
         XCTAssertFalse(payloads.manifestPayload.contains("must not be projected"))
     }
+
+    func testContextPackProjectionDoesNotExposeCitationAliasesInText() throws {
+        let task = TaskRecord(
+            id: "work-1",
+            title: "Delivery",
+            goal: "Implement scheduled delivery",
+            status: "active",
+            createdAt: "2026-07-30T00:00:00Z",
+            updatedAt: "2026-07-30T00:00:00Z"
+        )
+        let content = ContextPackContent(
+            objective: "目标 S3",
+            scopeIn: [ContextClaim(text: "范围 S4", sourceIDs: ["file:1"])],
+            scopeOut: [],
+            confirmedFacts: [],
+            constraints: [],
+            acceptanceCriteria: [],
+            assumptions: [],
+            questions: [],
+            brief: "摘要 S3",
+            recommendedSourceIDs: ["file:1"]
+        )
+        let source = ContextSourceRef(
+            id: "file:1",
+            kind: "file",
+            title: "requirements.md",
+            path: "/tmp/requirements.md",
+            updatedAt: "2026-07-30T00:00:00Z",
+            contentHash: "hash",
+            characterCount: 10,
+            includedCharacterCount: 10,
+            truncated: false
+        )
+        let pack = ContextPack(
+            id: "pack-1",
+            taskID: task.id,
+            revision: 1,
+            content: content,
+            sourceManifest: [source],
+            freshness: "fresh",
+            staleReason: nil,
+            createdAt: "2026-07-30T00:00:00Z"
+        )
+
+        let payloads = try ProjectionPayloadBuilder.build(
+            task: task,
+            checkpoint: nil,
+            notes: [],
+            visibleFiles: [],
+            hiddenFiles: [],
+            repository: nil,
+            supplement: nil,
+            contextPack: pack,
+            now: "2026-07-30T00:00:00Z"
+        )
+
+        XCTAssertFalse(payloads.manifestPayload.contains("目标 S3"))
+        XCTAssertFalse(payloads.manifestPayload.contains("范围 S4"))
+        XCTAssertFalse(payloads.briefPayload.contains("摘要 S3"))
+    }
 }

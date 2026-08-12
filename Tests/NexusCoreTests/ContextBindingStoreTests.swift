@@ -182,6 +182,141 @@ final class ContextBindingStoreTests: XCTestCase {
         XCTAssertEqual(try fixture.store.workspaceBinding(path: workspace.path)?.taskID, task.id)
     }
 
+    func testWorkspaceProvisioningCreatesAndBindsAnIsolatedWorktree() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let repository = try fixture.makeWorkspace("repository", initializeGit: false)
+        try runGit(["init", "-b", "main"], at: repository)
+        try runGit(["config", "user.name", "Nexus Test"], at: repository)
+        try runGit(["config", "user.email", "nexus-test@example.invalid"], at: repository)
+        try "fixture".write(to: repository.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
+        try runGit(["add", "README.md"], at: repository)
+        try runGit(["commit", "-m", "Initial fixture"], at: repository)
+
+        let task = try fixture.store.createTask(title: "预约配送功能", goal: "实现预约配送")
+        let destination = fixture.directory.appendingPathComponent("isolated-booking", isDirectory: true)
+        let service = WorkspaceProvisioningService(store: fixture.store)
+        let request = WorkspaceProvisioningRequest(
+            taskID: task.id,
+            repositoryRoot: repository.path,
+            baseRef: "main",
+            branchName: "nexus/booking",
+            destinationPath: destination.path
+        )
+
+        let preview = try service.preview(request)
+        XCTAssertEqual(preview.dirtyState, .clean)
+        let result = try service.create(request)
+
+        XCTAssertEqual(result.workspace.path, destination.path)
+        XCTAssertEqual(result.workspace.branch, "nexus/booking")
+        XCTAssertEqual(try fixture.store.repository(taskID: task.id)?.workspaceOrigin, .nexusCreated)
+        XCTAssertEqual(try fixture.store.repository(taskID: task.id)?.baseRef, "main")
+        XCTAssertEqual(try fixture.store.workspaceBinding(path: destination.path)?.taskID, task.id)
+        XCTAssertEqual(fixture.store.currentGitBranch(at: repository.path), "main")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: destination.appendingPathComponent("README.md").path))
+
+        let secondTask = try fixture.store.createTask(title: "订单超时", goal: "处理超时")
+        let secondDestination = fixture.directory.appendingPathComponent("isolated-timeout", isDirectory: true)
+        let secondRequest = WorkspaceProvisioningRequest(
+            taskID: secondTask.id,
+            repositoryRoot: repository.path,
+            baseRef: "main",
+            branchName: "nexus/timeout",
+            destinationPath: secondDestination.path
+        )
+        _ = try service.create(secondRequest)
+        XCTAssertEqual(try fixture.store.repository(taskID: secondTask.id)?.workspaceOrigin, .nexusCreated)
+        XCTAssertEqual(try fixture.store.workspaceBinding(path: secondDestination.path)?.taskID, secondTask.id)
+        XCTAssertEqual(
+            Set(fixture.store.gitWorktrees(at: repository.path).map(\.branch)),
+            Set(["main", "nexus/booking", "nexus/timeout"])
+        )
+    }
+
+    func testWorkspaceProvisioningRequiresExplicitDirtyBaseConfirmation() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let repository = try fixture.makeWorkspace("repository", initializeGit: false)
+        try runGit(["init", "-b", "main"], at: repository)
+        try runGit(["config", "user.name", "Nexus Test"], at: repository)
+        try runGit(["config", "user.email", "nexus-test@example.invalid"], at: repository)
+        try "fixture".write(to: repository.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
+        try runGit(["add", "README.md"], at: repository)
+        try runGit(["commit", "-m", "Initial fixture"], at: repository)
+        try "local change".write(to: repository.appendingPathComponent("notes.txt"), atomically: true, encoding: .utf8)
+
+        let task = try fixture.store.createTask(title: "Dirty base", goal: "")
+        let request = WorkspaceProvisioningRequest(
+            taskID: task.id,
+            repositoryRoot: repository.path,
+            baseRef: "main",
+            branchName: "nexus/dirty-base",
+            destinationPath: fixture.directory.appendingPathComponent("isolated-dirty").path
+        )
+        let service = WorkspaceProvisioningService(store: fixture.store)
+
+        let preview = try service.preview(request)
+        XCTAssertEqual(preview.dirtyState, .modified)
+        XCTAssertFalse(preview.warnings.isEmpty)
+        XCTAssertThrowsError(try service.create(request)) { error in
+            XCTAssertEqual(
+                error as? WorkspaceProvisioningError,
+                .dirtyBaseRequiresConfirmation(repository.path)
+            )
+        }
+        XCTAssertNil(try fixture.store.repository(taskID: task.id))
+    }
+
+    func testWorkspaceProvisioningUsesAnASCIIFallbackForNonLatinTitles() {
+        XCTAssertEqual(
+            WorkspaceProvisioningService.defaultBranchName(
+                workTitle: "预约配送功能",
+                taskID: "12345678-90ab-cdef-1234-567890abcdef"
+            ),
+            "nexus/work-12345678"
+        )
+        XCTAssertEqual(
+            WorkspaceProvisioningService.defaultBranchName(
+                workTitle: "Inventory Migration",
+                taskID: "12345678-90ab-cdef-1234-567890abcdef"
+            ),
+            "nexus/inventory-migration"
+        )
+    }
+
+    func testUnlinkingWorkspaceKeepsTheDirectoryAndGitBranch() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanup() }
+        let repository = try fixture.makeWorkspace("repository", initializeGit: false)
+        try runGit(["init", "-b", "main"], at: repository)
+        try runGit(["config", "user.name", "Nexus Test"], at: repository)
+        try runGit(["config", "user.email", "nexus-test@example.invalid"], at: repository)
+        try "fixture".write(to: repository.appendingPathComponent("README.md"), atomically: true, encoding: .utf8)
+        try runGit(["add", "README.md"], at: repository)
+        try runGit(["commit", "-m", "Initial fixture"], at: repository)
+
+        let task = try fixture.store.createTask(title: "Unlink me", goal: "")
+        let destination = fixture.directory.appendingPathComponent("isolated-unlink", isDirectory: true)
+        let service = WorkspaceProvisioningService(store: fixture.store)
+        _ = try service.create(
+            WorkspaceProvisioningRequest(
+                taskID: task.id,
+                repositoryRoot: repository.path,
+                baseRef: "main",
+                branchName: "nexus/unlink",
+                destinationPath: destination.path
+            )
+        )
+
+        try fixture.store.unlinkRepository(taskID: task.id)
+
+        XCTAssertNil(try fixture.store.repository(taskID: task.id))
+        XCTAssertNil(try fixture.store.workspaceBinding(path: destination.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: destination.appendingPathComponent("README.md").path))
+        XCTAssertTrue(fixture.store.gitWorktrees(at: repository.path).contains { $0.branch == "nexus/unlink" })
+    }
+
     private func makeFixture() throws -> Fixture {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)

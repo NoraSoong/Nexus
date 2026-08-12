@@ -52,6 +52,12 @@ struct FileRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "doc.text")
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(Color.secondary.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {
                     if isRenaming {
                         TextField(l10n.fileName, text: $file.displayName)
@@ -99,9 +105,13 @@ struct FileRow: View {
                 .textSelection(.enabled)
                 .help(file.path)
         }
-        .padding(9)
-        .background(isHovered ? Color.secondary.opacity(0.075) : Color.secondary.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(10)
+        .background(isHovered ? Color.secondary.opacity(0.075) : Color.secondary.opacity(0.045))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color.secondary.opacity(0.08), lineWidth: 1)
+        }
         .onHover { isHovered = $0 }
         .onChange(of: isRenaming) { oldValue, newValue in
             if oldValue && !newValue {
@@ -122,6 +132,12 @@ struct TextMaterialRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "text.page")
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(Color.secondary.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {
                     if isRenaming {
                         TextField(l10n.materialTitle, text: $material.title)
@@ -166,9 +182,13 @@ struct TextMaterialRow: View {
                 .lineLimit(3)
                 .textSelection(.enabled)
         }
-        .padding(9)
-        .background(isHovered ? Color.secondary.opacity(0.075) : Color.secondary.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(10)
+        .background(isHovered ? Color.secondary.opacity(0.075) : Color.secondary.opacity(0.045))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color.secondary.opacity(0.08), lineWidth: 1)
+        }
         .onHover { isHovered = $0 }
         .onChange(of: isRenaming) { oldValue, newValue in
             if oldValue && !newValue {

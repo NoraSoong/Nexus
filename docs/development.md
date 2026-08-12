@@ -13,9 +13,9 @@ Run the commands below from the repository root unless a command changes directo
 
 A DeepSeek or OpenAI API key is optional for normal app use and required only for the user-triggered `Prepare Current Work` flow. Connect it through the app's preparation service settings; the implementation stores it in the provider-specific macOS Keychain account. Do not add it to environment files, SQLite, fixtures, or source control. The main preparation sheet should only expose connection status and a settings entry, not Keychain terminology.
 
-Model prompts use short, request-local source citations such as `S1` and `S2`. Nexus resolves them back to the real source IDs locally, accepts exact legacy IDs for compatibility, and rejects titles, paths, filenames, or unknown citations.
+Model prompts use short, request-local source citations such as `S1` and `S2`. These aliases are model-only metadata and must not appear in natural-language context. Nexus resolves them back to the real source IDs locally and cleans legacy text before projection; exact legacy IDs remain accepted for compatibility, while titles, paths, filenames, and unknown citations are rejected. DeepSeek Flash/Pro selection is persisted locally; OpenAI currently uses one fixed model.
 
-Workspace association is intentionally one-to-one by normalized workspace path. A repository may have multiple worktrees, and each worktree may be associated with a different Work. Association failures must preserve existing bindings and surface a typed `WorkspaceAssociationError` to the UI.
+Workspace association is intentionally one-to-one by normalized workspace path. A repository may have multiple worktrees, and each worktree may be associated with a different Work. Association failures must preserve existing bindings and surface a typed `WorkspaceAssociationError` to the UI. `WorkspaceProvisioningService` runs standard `git worktree add` only after explicit confirmation; it does not merge, push, or delete code.
 
 The MCP helper is pinned through `adapters/mcp/package-lock.json`. Do not use floating dependency versions for the helper.
 
@@ -133,7 +133,7 @@ with that workflow rather than adding one-off checks only in CI.
 - Assistant-visible materials are opt-in per item.
 - Hidden materials must remain unreadable through MCP.
 - MCP must not return the last stored context when the Mac app is not running or assistant access is paused.
-- Git branch awareness may suggest or create work, but must not mutate the worktree.
+- Git branch awareness may show mismatch and offer an explicit isolated-directory creation flow. Only that confirmed flow creates a new worktree; Nexus never switches, stashes, commits, or deletes code automatically.
 - Debug CLI is for testing and diagnostics, not the primary product surface.
 - Empty product databases should remain empty until the user creates work or a debug seed command is explicitly run.
 - Model output remains a draft until explicit approval; failed or cancelled requests must not change MCP.

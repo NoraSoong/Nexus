@@ -7,6 +7,7 @@ import {
 import {
   buildCurrentContextPayload,
   objectArray,
+  sanitizeGeneratedProjectionPayload,
   serializedContextPayload,
   stringValue,
   type ContextWarning,
@@ -223,6 +224,7 @@ export async function runMcpServer(selection: BindingSelection = {}): Promise<vo
 
     if (name === "get_active_task") {
       const projection = db.getActiveProjection("active_task");
+      const payload = sanitizeGeneratedProjectionPayload(JSON.parse(projection.payload_json));
       return {
         content: [
           {
@@ -234,7 +236,7 @@ export async function runMcpServer(selection: BindingSelection = {}): Promise<vo
               binding: projection.binding,
               workspace: projection.binding.scope_type === "workspace" ? projection.binding.scope_key : null,
               effective_freshness: projection.freshness_at_generation,
-              payload: JSON.parse(projection.payload_json)
+              payload
             }, null, 2)
           }
         ]
@@ -243,6 +245,7 @@ export async function runMcpServer(selection: BindingSelection = {}): Promise<vo
 
     if (name === "get_resume_brief") {
       const projection = db.getActiveProjection("resume_brief");
+      const payload = sanitizeGeneratedProjectionPayload(JSON.parse(projection.payload_json));
       return {
         content: [
           {
@@ -254,7 +257,7 @@ export async function runMcpServer(selection: BindingSelection = {}): Promise<vo
               binding: projection.binding,
               workspace: projection.binding.scope_type === "workspace" ? projection.binding.scope_key : null,
               effective_freshness: projection.freshness_at_generation,
-              payload: JSON.parse(projection.payload_json)
+              payload
             }, null, 2)
           }
         ]
@@ -263,6 +266,7 @@ export async function runMcpServer(selection: BindingSelection = {}): Promise<vo
 
     if (name === "get_task_manifest") {
       const projection = db.getActiveProjection("manifest");
+      const payload = sanitizeGeneratedProjectionPayload(JSON.parse(projection.payload_json));
       return {
         content: [
           {
@@ -274,7 +278,7 @@ export async function runMcpServer(selection: BindingSelection = {}): Promise<vo
               binding: projection.binding,
               workspace: projection.binding.scope_type === "workspace" ? projection.binding.scope_key : null,
               effective_freshness: projection.freshness_at_generation,
-              payload: JSON.parse(projection.payload_json)
+              payload
             }, null, 2)
           }
         ]

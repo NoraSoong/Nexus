@@ -31,7 +31,7 @@ struct ContextPreparationView: View {
         }
         .sheet(isPresented: $model.showContextModelSettings) {
             ContextModelSettingsView(model: model)
-                .frame(width: 480, height: 380)
+                .frame(width: 500, height: 440)
         }
     }
 
@@ -110,21 +110,37 @@ struct ContextPreparationView: View {
         VStack(spacing: 0) {
             sheetHeader(
                 title: l10n.contextReview,
-                description: ""
+                description: l10n.contextReviewDescription
             )
             Divider()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    if let draft = model.contextDraft {
-                        briefEditor
-                        clarificationQuestions(draft.content.questions)
-                        reviewFindings
-                        reviewComparison
-                        contextDetails(draft.content)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Color.clear
+                            .frame(height: 1)
+                            .id(reviewScrollTopID)
+                        if let draft = model.contextDraft {
+                            briefEditor
+                            clarificationQuestions(draft.content.questions)
+                            reviewFindings
+                            reviewComparison
+                            contextDetails(draft.content)
+                        }
+                        errorMessage
                     }
-                    errorMessage
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 16)
                 }
-                .padding(22)
+                .onAppear {
+                    DispatchQueue.main.async {
+                        proxy.scrollTo(reviewScrollTopID, anchor: .top)
+                    }
+                }
+                .onChange(of: model.contextDraft?.id) { _, _ in
+                    DispatchQueue.main.async {
+                        proxy.scrollTo(reviewScrollTopID, anchor: .top)
+                    }
+                }
             }
             Divider()
             HStack {
@@ -133,22 +149,8 @@ struct ContextPreparationView: View {
                     dismiss()
                 }
                 Spacer()
-                if model.canPrepareWithDeepSeekPro {
-                    Menu {
-                        Button {
-                            model.generateContextDraftWithDeepSeekPro()
-                        } label: {
-                            Label(l10n.prepareWithDeepSeekPro, systemImage: "sparkles")
-                        }
-                    } label: {
-                        Text(l10n.regenerateContext)
-                    } primaryAction: {
-                        model.generateContextDraft()
-                    }
-                } else {
-                    Button(l10n.regenerateContext) {
-                        model.generateContextDraft()
-                    }
+                Button(l10n.regenerateContext) {
+                    model.generateContextDraft()
                 }
                 Button(hasEditedDraft ? l10n.applyEditedContextPack : l10n.applyContextPack) {
                     model.approvePreparedContext()
@@ -162,6 +164,7 @@ struct ContextPreparationView: View {
                 .help(hasQuestionAnswers ? l10n.regenerateAnsweredQuestionsHint : "")
             }
             .padding(18)
+            .background(Color(NSColor.controlBackgroundColor).opacity(0.72))
         }
     }
 
@@ -323,17 +326,25 @@ struct ContextPreparationView: View {
     }
 
     private var briefEditor: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(l10n.preparedBrief)
-                .font(.headline)
-            TextEditor(text: $model.contextDraftBrief)
-                .font(.body)
-                .scrollContentBackground(.hidden)
-                .padding(10)
-                .background(Color(NSColor.textBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.16)))
-                .frame(minHeight: 190)
+        NexusPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                NexusPanelHeader(
+                    systemImage: "text.alignleft",
+                    title: l10n.preparedBrief,
+                    subtitle: l10n.editPreparedDetailsHint
+                )
+                TextEditor(text: $model.contextDraftBrief)
+                    .font(.body)
+                    .scrollContentBackground(.hidden)
+                    .padding(10)
+                    .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(Color.secondary.opacity(0.14), lineWidth: 1)
+                    }
+                    .frame(minHeight: 170, maxHeight: 230)
+            }
         }
     }
 
@@ -343,35 +354,31 @@ struct ContextPreparationView: View {
             !diff.isInitial,
             diff.hasChanges
         {
-            DisclosureGroup {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(diff.changes) { change in
-                        contextChangeRow(change)
+            NexusPanel {
+                DisclosureGroup {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(diff.changes) { change in
+                            contextChangeRow(change)
+                        }
+                        ForEach(diff.sourceChanges) { change in
+                            sourceChangeRow(change)
+                        }
                     }
-                    ForEach(diff.sourceChanges) { change in
-                        sourceChangeRow(change)
-                    }
-                }
-                .padding(.top, 10)
-            } label: {
-                HStack {
-                    Label(l10n.reviewContextChanges, systemImage: "arrow.left.arrow.right")
-                    Spacer()
-                    Text(
-                        l10n.contextChangeSummary(
+                    .padding(.top, 12)
+                } label: {
+                    NexusPanelHeader(
+                        systemImage: "arrow.left.arrow.right",
+                        title: l10n.reviewContextChanges,
+                        accent: .blue,
+                        trailing: l10n.contextChangeSummary(
                             added: diff.addedCount,
                             modified: diff.modifiedCount,
                             removed: diff.removedCount
                         )
                     )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 }
+                .font(.callout.weight(.medium))
             }
-            .font(.callout.weight(.medium))
-            .padding(13)
-            .background(Color.secondary.opacity(0.04))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }
 
@@ -379,31 +386,90 @@ struct ContextPreparationView: View {
     private var reviewFindings: some View {
         let findings = model.preparedContextFindings
         if !findings.isEmpty {
-            VStack(alignment: .leading, spacing: 9) {
-                Label(l10n.contextReviewFindingsTitle, systemImage: "exclamationmark.triangle.fill")
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(.orange)
-                ForEach(findings) { finding in
-                    HStack(alignment: .top, spacing: 9) {
-                        Image(systemName: "circle.fill")
-                            .font(.system(size: 5))
-                            .foregroundStyle(Color.orange.opacity(0.85))
-                            .frame(width: 12, height: 18)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(l10n.contextReviewFinding(finding))
-                                .font(.callout)
-                            if !finding.sourceIDs.isEmpty {
-                                Text(finding.sourceIDs.map(model.sourceTitle).joined(separator: ", "))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(2)
+            NexusPanel {
+                VStack(alignment: .leading, spacing: 12) {
+                    NexusPanelHeader(
+                        systemImage: "exclamationmark.triangle.fill",
+                        title: l10n.contextReviewFindingsTitle,
+                        subtitle: l10n.contextReviewFindingsDescription,
+                        accent: .orange,
+                        trailing: "\(findings.reduce(0) { $0 + $1.count })"
+                    )
+
+                    VStack(alignment: .leading, spacing: 7) {
+                        ForEach(findings) { finding in
+                            reviewFindingRow(finding)
+                        }
+                    }
+
+                    if let assumptions = model.contextDraft?.content.assumptions, !assumptions.isEmpty {
+                        Divider()
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 7) {
+                                Image(systemName: "questionmark.circle")
+                                    .foregroundStyle(.orange)
+                                Text(l10n.contextAssumptions)
+                                    .font(.callout.weight(.semibold))
                             }
+                            ForEach(Array(assumptions.enumerated()), id: \.offset) { _, assumption in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(ContextTextSanitizer.cleanText(assumption.text))
+                                        .font(.callout)
+                                    if !assumption.sourceIDs.isEmpty {
+                                        Text("\(l10n.citedSources): \(assumption.sourceIDs.map(model.sourceTitle).joined(separator: ", "))")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .padding(.leading, 24)
+                            }
+                            Text(l10n.contextAssumptionReviewHint)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 4)
+        }
+    }
+
+    private func reviewFindingRow(_ finding: ContextReviewFinding) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: findingIcon(finding.kind))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.orange)
+                .frame(width: 28, height: 28)
+                .background(Color.orange.opacity(0.11))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(l10n.contextReviewFinding(finding))
+                    .font(.callout.weight(.medium))
+                if !finding.sourceIDs.isEmpty {
+                    HStack(alignment: .top, spacing: 5) {
+                        Image(systemName: "doc.text")
+                            .font(.caption2)
+                        Text(finding.sourceIDs.map(model.sourceTitle).joined(separator: ", "))
+                            .lineLimit(2)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.orange.opacity(0.055))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func findingIcon(_ kind: ContextReviewFindingKind) -> String {
+        switch kind {
+        case .unresolvedQuestions: return "questionmark.circle"
+        case .assumptions: return "lightbulb"
+        case .truncatedSources: return "doc.badge.ellipsis"
+        case .changedSources: return "arrow.triangle.2.circlepath"
+        case .removedSources: return "doc.badge.minus"
         }
     }
 
@@ -479,75 +545,91 @@ struct ContextPreparationView: View {
     @ViewBuilder
     private func clarificationQuestions(_ questions: [ContextQuestion]) -> some View {
         if !questions.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(l10n.clarificationQuestions)
-                    .font(.headline)
-                ForEach(questions.prefix(5)) { question in
-                    VStack(alignment: .leading, spacing: 7) {
-                        Text(question.question)
-                            .font(.callout.weight(.semibold))
-                        if !question.whyItMatters.isEmpty {
-                            Text("\(l10n.whyItMatters): \(question.whyItMatters)")
+            NexusPanel {
+                VStack(alignment: .leading, spacing: 12) {
+                    NexusPanelHeader(
+                        systemImage: "questionmark.circle.fill",
+                        title: l10n.clarificationQuestions,
+                        subtitle: l10n.questionAnswerPlaceholder,
+                        accent: .orange,
+                        trailing: "\(min(questions.count, 5))"
+                    )
+                    ForEach(questions.prefix(5)) { question in
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text(question.question)
+                                .font(.callout.weight(.semibold))
+                            if !question.whyItMatters.isEmpty {
+                                Text("\(l10n.whyItMatters): \(question.whyItMatters)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if !question.sourceIDs.isEmpty {
+                                Text(
+                                    "\(l10n.citedSources): \(question.sourceIDs.map(model.sourceTitle).joined(separator: ", "))"
+                                )
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                        }
-                        if !question.sourceIDs.isEmpty {
-                            Text(
-                                "\(l10n.citedSources): \(question.sourceIDs.map(model.sourceTitle).joined(separator: ", "))"
+                            }
+                            TextField(
+                                l10n.questionAnswerPlaceholder,
+                                text: Binding(
+                                    get: { model.contextQuestionAnswers[question.id] ?? "" },
+                                    set: { model.contextQuestionAnswers[question.id] = $0 }
+                                ),
+                                axis: .vertical
                             )
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .textFieldStyle(.roundedBorder)
+                            .lineLimit(1...3)
                         }
-                        TextField(
-                            l10n.questionAnswerPlaceholder,
-                            text: Binding(
-                                get: { model.contextQuestionAnswers[question.id] ?? "" },
-                                set: { model.contextQuestionAnswers[question.id] = $0 }
-                            ),
-                            axis: .vertical
-                        )
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(1...3)
+                        .padding(12)
+                        .background(Color.orange.opacity(0.055))
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
-                    .padding(12)
-                    .background(Color.orange.opacity(0.055))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
             }
         }
     }
 
     private func contextDetails(_ content: ContextPackContent) -> some View {
-        DisclosureGroup(l10n.contextDetails) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text(l10n.editPreparedDetailsHint)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(l10n.contextObjective)
-                        .font(.caption.weight(.semibold))
+        NexusPanel {
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(l10n.editPreparedDetailsHint)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
-                    TextField(
-                        l10n.contextObjective,
-                        text: Binding(
-                            get: { model.contextDraft?.content.objective ?? "" },
-                            set: { model.updateContextObjective($0) }
-                        ),
-                        axis: .vertical
-                    )
-                    .textFieldStyle(.roundedBorder)
-                    .lineLimit(1...3)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(l10n.contextObjective)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        TextField(
+                            l10n.contextObjective,
+                            text: Binding(
+                                get: { model.contextDraft?.content.objective ?? "" },
+                                set: { model.updateContextObjective($0) }
+                            ),
+                            axis: .vertical
+                        )
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(1...3)
+                    }
+                    claimSection(l10n.contextScopeIn, content.scopeIn, section: .scopeIn)
+                    claimSection(l10n.contextScopeOut, content.scopeOut, section: .scopeOut)
+                    claimSection(l10n.contextConfirmedFacts, content.confirmedFacts, section: .confirmedFacts)
+                    claimSection(l10n.contextConstraints, content.constraints, section: .constraints)
+                    claimSection(l10n.contextAcceptanceCriteria, content.acceptanceCriteria, section: .acceptanceCriteria)
+                    claimSection(l10n.contextAssumptions, content.assumptions, section: .assumptions)
                 }
-                claimSection(l10n.contextScopeIn, content.scopeIn, section: .scopeIn)
-                claimSection(l10n.contextScopeOut, content.scopeOut, section: .scopeOut)
-                claimSection(l10n.contextConfirmedFacts, content.confirmedFacts, section: .confirmedFacts)
-                claimSection(l10n.contextConstraints, content.constraints, section: .constraints)
-                claimSection(l10n.contextAcceptanceCriteria, content.acceptanceCriteria, section: .acceptanceCriteria)
-                claimSection(l10n.contextAssumptions, content.assumptions, section: .assumptions)
+                .padding(.top, 12)
+            } label: {
+                NexusPanelHeader(
+                    systemImage: "slider.horizontal.3",
+                    title: l10n.contextDetails,
+                    subtitle: l10n.editPreparedDetailsHint,
+                    accent: .secondary
+                )
             }
-            .padding(.top, 10)
+            .font(.callout.weight(.medium))
         }
-        .font(.callout.weight(.medium))
     }
 
     @ViewBuilder
@@ -590,17 +672,6 @@ struct ContextPreparationView: View {
                     .font(.caption)
                     .foregroundStyle(.red)
                     .fixedSize(horizontal: false, vertical: true)
-                if model.canPrepareWithDeepSeekPro {
-                    HStack(spacing: 8) {
-                        Button(l10n.retryWithDeepSeekPro) {
-                            model.generateContextDraftWithDeepSeekPro()
-                        }
-                        .buttonStyle(.bordered)
-                        Text(l10n.deepSeekProOneTimeHint)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
             }
         }
     }
@@ -637,6 +708,10 @@ struct ContextPreparationView: View {
     private var preflightScrollIdentity: String {
         guard let input = model.contextPreparationInput else { return "preflight-empty" }
         return "preflight-\(input.taskID)-\(input.baseRevision)"
+    }
+
+    private var reviewScrollTopID: String {
+        "review-top-\(model.contextDraft?.id ?? "empty")"
     }
 
     private var hasEditedDraft: Bool {

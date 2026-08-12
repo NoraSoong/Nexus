@@ -76,13 +76,6 @@ struct ActiveContextFooter: View {
     }
 }
 
-struct GitBranchSuggestion: Equatable {
-    let taskID: String
-    let taskTitle: String
-    let repositoryPath: String
-    let branch: String
-}
-
 struct SidebarProjectGroup: Identifiable, Equatable {
     let id: String
     let name: String
@@ -309,45 +302,6 @@ struct ProjectTaskGroupView: View {
         }
         .padding(.horizontal, 7)
         .padding(.vertical, 5)
-    }
-}
-
-struct GitSuggestionNotice: View {
-    let suggestion: GitBranchSuggestion
-    let l10n: L10n
-    let switchAction: () -> Void
-    let dismiss: () -> Void
-
-    var body: some View {
-        HStack(spacing: 9) {
-            Image(systemName: "arrow.triangle.branch")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(l10n.currentBranchHasWork)
-                    .font(.caption.weight(.medium))
-                    .lineLimit(1)
-                Text("\(suggestion.taskTitle) · \(suggestion.branch)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer()
-            Button(l10n.openMatchedWork) { switchAction() }
-                .controlSize(.small)
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.caption)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.secondary.opacity(0.055))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 

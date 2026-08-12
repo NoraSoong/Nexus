@@ -120,15 +120,15 @@ struct AssistantPreviewCard: View {
                 )
             }
         }
-        .padding(12)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(NSColor.textBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.secondary.opacity(0.14), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.secondary.opacity(0.13), lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.025), radius: 8, x: 0, y: 3)
+        .shadow(color: Color.black.opacity(0.028), radius: 12, x: 0, y: 5)
     }
 
     private var visibleMaterialCount: Int {

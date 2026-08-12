@@ -77,6 +77,9 @@ enum ProjectionSchemaMigrator {
                 task_id TEXT PRIMARY KEY,
                 path TEXT NOT NULL,
                 branch TEXT NOT NULL,
+                workspace_origin TEXT NOT NULL DEFAULT 'external',
+                base_ref TEXT,
+                created_head_sha TEXT,
                 anchor_head_sha TEXT,
                 anchor_branch TEXT,
                 anchor_captured_at TEXT,
@@ -88,6 +91,14 @@ enum ProjectionSchemaMigrator {
         try addColumnIfMissing(db, table: "task_repositories", column: "anchor_head_sha", definition: "TEXT")
         try addColumnIfMissing(db, table: "task_repositories", column: "anchor_branch", definition: "TEXT")
         try addColumnIfMissing(db, table: "task_repositories", column: "anchor_captured_at", definition: "TEXT")
+        try addColumnIfMissing(
+            db,
+            table: "task_repositories",
+            column: "workspace_origin",
+            definition: "TEXT NOT NULL DEFAULT 'external'"
+        )
+        try addColumnIfMissing(db, table: "task_repositories", column: "base_ref", definition: "TEXT")
+        try addColumnIfMissing(db, table: "task_repositories", column: "created_head_sha", definition: "TEXT")
         try db.execute(
             """
             CREATE TABLE IF NOT EXISTS task_supplements (
@@ -245,7 +256,7 @@ enum ProjectionSchemaMigrator {
             "INSERT OR REPLACE INTO metadata(key, value) VALUES ('core_version', ?);",
             bindings: [NexusVersion.current]
         )
-        try db.execute("PRAGMA user_version = 3;")
+        try db.execute("PRAGMA user_version = 4;")
     }
 
     private static func addColumnIfMissing(

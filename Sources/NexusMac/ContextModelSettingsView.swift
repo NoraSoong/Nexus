@@ -40,6 +40,10 @@ struct ContextModelSettingsView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
 
+                if model.contextModelProvider == .deepSeek {
+                    modelChoice
+                }
+
                 if model.hasContextAPIKey && !model.isReplacingContextModelKey {
                     connectedContent
                 } else {
@@ -77,7 +81,14 @@ struct ContextModelSettingsView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(l10n.contextModelConnection(ContextModelConfiguration(provider: model.contextModelProvider)))
+                    Text(
+                        l10n.contextModelConnection(
+                            ContextModelConfiguration(
+                                provider: model.contextModelProvider,
+                                model: model.contextModelSelection
+                            )
+                        )
+                    )
                         .font(.callout.weight(.semibold))
                     Text(l10n.connectionVerified)
                         .font(.caption)
@@ -98,6 +109,25 @@ struct ContextModelSettingsView: View {
                 }
             }
             .controlSize(.small)
+        }
+    }
+
+    private var modelChoice: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(l10n.contextModelChoiceTitle)
+                .font(.headline)
+            Picker("", selection: modelBinding) {
+                Text(l10n.contextModelChoiceFlash)
+                    .tag(DeepSeekContextModelClient.flashModel)
+                Text(l10n.contextModelChoicePro)
+                    .tag(DeepSeekContextModelClient.proModel)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            Text(l10n.contextModelChoiceHint)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -127,6 +157,13 @@ struct ContextModelSettingsView: View {
         Binding(
             get: { model.contextModelProvider },
             set: { model.selectContextModelProvider($0) }
+        )
+    }
+
+    private var modelBinding: Binding<String> {
+        Binding(
+            get: { model.contextModelSelection },
+            set: { model.selectContextModel($0) }
         )
     }
 

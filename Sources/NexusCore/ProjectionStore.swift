@@ -121,11 +121,13 @@ public final class ProjectionStore: @unchecked Sendable {
             try db.execute(
                 """
                 INSERT INTO task_repositories (
-                    task_id, path, branch, anchor_head_sha, anchor_branch, anchor_captured_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?);
+                    task_id, path, branch, workspace_origin, base_ref, created_head_sha,
+                    anchor_head_sha, anchor_branch, anchor_captured_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 """,
                 bindings: [
-                    task.id, repository.path, repository.branch, repository.anchorHeadSHA,
+                    task.id, repository.path, repository.branch, repository.workspaceOrigin.rawValue,
+                    repository.baseRef, repository.createdHeadSHA, repository.anchorHeadSHA,
                     repository.anchorBranch, repository.anchorCapturedAt, repository.updatedAt,
                 ]
             )
@@ -181,6 +183,11 @@ public final class ProjectionStore: @unchecked Sendable {
             ORDER BY updated_at DESC, created_at DESC;
             """
         ).map(ProjectionRowMapper.task)
+    }
+
+    public func task(id: String) throws -> TaskRecord? {
+        let db = try openDatabase()
+        return try findTask(id: id, db: db)
     }
 
     public func updateTask(id: String, title: String, goal: String) throws {
@@ -282,8 +289,10 @@ public final class ProjectionStore: @unchecked Sendable {
         }
     }
 
-    public func refreshActiveContextFreshness() throws {
+    @discardableResult
+    public func refreshActiveContextFreshness() throws -> Bool {
         let db = try openDatabase()
+        var didChange = false
         let taskIDs = try db.queryAll(
             "SELECT DISTINCT task_id FROM context_bindings WHERE task_id IS NOT NULL;"
         ).compactMap { $0["task_id"] }
@@ -304,7 +313,9 @@ public final class ProjectionStore: @unchecked Sendable {
                 continue
             }
             try writeProjections(task: task, db: db)
+            didChange = true
         }
+        return didChange
     }
 
     @discardableResult
@@ -419,6 +430,22 @@ public final class ProjectionStore: @unchecked Sendable {
     }
 
     public func setRepository(taskID: String, path: String) throws {
+        try setRepository(
+            taskID: taskID,
+            path: path,
+            workspaceOrigin: .external,
+            baseRef: nil,
+            createdHeadSHA: nil
+        )
+    }
+
+    public func setRepository(
+        taskID: String,
+        path: String,
+        workspaceOrigin: WorkspaceOrigin,
+        baseRef: String?,
+        createdHeadSHA: String?
+    ) throws {
         let db = try openDatabase()
         guard try findTask(id: taskID, db: db) != nil else {
             throw WorkspaceAssociationError.taskNotFound(taskID)
@@ -436,6 +463,9 @@ public final class ProjectionStore: @unchecked Sendable {
             taskID: taskID,
             path: normalizedPath,
             branch: workspace.branch,
+            workspaceOrigin: workspaceOrigin,
+            baseRef: baseRef,
+            createdHeadSHA: createdHeadSHA,
             anchorHeadSHA: GitRepositoryReader.headSHA(at: normalizedPath),
             anchorBranch: workspace.branch,
             anchorCapturedAt: timestamp,
@@ -496,18 +526,23 @@ public final class ProjectionStore: @unchecked Sendable {
             try db.execute(
                 """
                 INSERT INTO task_repositories (
-                    task_id, path, branch, anchor_head_sha, anchor_branch, anchor_captured_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    task_id, path, branch, workspace_origin, base_ref, created_head_sha,
+                    anchor_head_sha, anchor_branch, anchor_captured_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(task_id) DO UPDATE SET
                     path = excluded.path,
                     branch = excluded.branch,
+                    workspace_origin = excluded.workspace_origin,
+                    base_ref = excluded.base_ref,
+                    created_head_sha = excluded.created_head_sha,
                     anchor_head_sha = excluded.anchor_head_sha,
                     anchor_branch = excluded.anchor_branch,
                     anchor_captured_at = excluded.anchor_captured_at,
                     updated_at = excluded.updated_at;
                 """,
                 bindings: [
-                    taskID, repository.path, repository.branch, repository.anchorHeadSHA,
+                    taskID, repository.path, repository.branch, repository.workspaceOrigin.rawValue,
+                    repository.baseRef, repository.createdHeadSHA, repository.anchorHeadSHA,
                     repository.anchorBranch, repository.anchorCapturedAt, repository.updatedAt,
                 ]
             )
@@ -556,11 +591,84 @@ public final class ProjectionStore: @unchecked Sendable {
         }
     }
 
+    public func refreshRepositoryAnchor(taskID: String) throws {
+        guard let repository = try repository(taskID: taskID) else {
+            throw WorkspaceAssociationError.pathUnavailable(taskID)
+        }
+        try setRepository(
+            taskID: taskID,
+            path: repository.path,
+            workspaceOrigin: repository.workspaceOrigin,
+            baseRef: repository.baseRef,
+            createdHeadSHA: repository.createdHeadSHA
+        )
+    }
+
+    public func unlinkRepository(taskID: String) throws {
+        let db = try openDatabase()
+        guard let task = try findTask(id: taskID, db: db) else {
+            throw WorkspaceAssociationError.taskNotFound(taskID)
+        }
+        let existingContext = try loadProjectionContext(taskID: taskID)
+        let previousPath = existingContext.repository?.path
+        let context = ProjectionContext(
+            checkpoint: existingContext.checkpoint,
+            notes: existingContext.notes,
+            visibleFiles: existingContext.visibleFiles,
+            hiddenFiles: existingContext.hiddenFiles,
+            repository: nil,
+            supplement: existingContext.supplement
+        )
+        let packResolution = try resolvedContextPack(task: task, context: context)
+        let payloads = try makePayloads(
+            task: task,
+            context: context,
+            pack: packResolution.projectionPack,
+            gitActivity: nil,
+            now: now()
+        )
+        let timestamp = now()
+
+        try db.execute("BEGIN IMMEDIATE;")
+        do {
+            try db.execute("DELETE FROM task_repositories WHERE task_id = ?;", bindings: [taskID])
+            if let previousPath {
+                try db.execute(
+                    "DELETE FROM context_bindings WHERE scope_type = 'workspace' AND scope_key = ? AND task_id = ?;",
+                    bindings: [WorkspacePath.normalize(previousPath), taskID]
+                )
+            }
+            try db.execute("INSERT INTO revision_counter DEFAULT VALUES;")
+            let revision = db.lastInsertRowID
+            if let persistedPack = packResolution.persistedPack {
+                try db.execute(
+                    "UPDATE context_packs SET freshness = ?, stale_reason = ? WHERE id = ?;",
+                    bindings: [persistedPack.freshness, persistedPack.staleReason, persistedPack.id]
+                )
+            }
+            try writeProjectionRows(
+                db: db,
+                task: task,
+                context: context,
+                payloads: payloads,
+                pack: packResolution.projectionPack,
+                revision: revision,
+                now: timestamp
+            )
+            try advanceBindings(db: db, taskID: taskID, revision: revision, now: timestamp)
+            try db.execute("COMMIT;")
+        } catch {
+            try? db.execute("ROLLBACK;")
+            throw error
+        }
+    }
+
     public func repository(taskID: String) throws -> TaskRepositoryRecord? {
         let db = try openDatabase()
         return try db.queryOne(
             """
-            SELECT task_id, path, branch, anchor_head_sha, anchor_branch, anchor_captured_at, updated_at
+            SELECT task_id, path, branch, workspace_origin, base_ref, created_head_sha,
+                   anchor_head_sha, anchor_branch, anchor_captured_at, updated_at
             FROM task_repositories
             WHERE task_id = ?;
             """,
@@ -572,8 +680,8 @@ public final class ProjectionStore: @unchecked Sendable {
         let db = try openDatabase()
         return try db.queryAll(
             """
-            SELECT r.task_id, r.path, r.branch, r.anchor_head_sha, r.anchor_branch,
-                   r.anchor_captured_at, r.updated_at
+            SELECT r.task_id, r.path, r.branch, r.workspace_origin, r.base_ref, r.created_head_sha,
+                   r.anchor_head_sha, r.anchor_branch, r.anchor_captured_at, r.updated_at
             FROM task_repositories r
             JOIN tasks t ON t.id = r.task_id
             WHERE t.archived_at IS NULL

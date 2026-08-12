@@ -86,7 +86,6 @@ extension AppModel {
                     }
                     showToast(l10n.repositoryLinked)
                     refresh()
-                    updateGitSuggestion()
                 } catch {
                     showToast(
                         l10n.workspaceAssociationErrorMessage(
@@ -96,6 +95,75 @@ extension AppModel {
                     )
                     message = "Repository error: \(error)"
                 }
+            }
+        }
+    }
+
+    func beginWorkspaceProvisioning() {
+        guard selectedTaskID != nil else {
+            showToast(l10n.nameYourWorkFirst)
+            return
+        }
+        workspaceProvisioningError = ""
+        showWorkspaceProvisioningSheet = true
+    }
+
+    func createIsolatedWorkspace(_ request: WorkspaceProvisioningRequest) {
+        isProvisioningWorkspace = true
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let result = try await performStoreOperation { store in
+                    try WorkspaceProvisioningService(store: store).create(request)
+                }
+                showWorkspaceProvisioningSheet = false
+                showToast(l10n.workspaceCreated(result.workspace.path))
+                refresh()
+            } catch {
+                workspaceProvisioningError = l10n.workspaceProvisioningErrorMessage(error)
+                showToast(l10n.workspaceProvisioningErrorMessage(error))
+                message = "Workspace provisioning error: \(error)"
+            }
+            isProvisioningWorkspace = false
+        }
+    }
+
+    func copySelectedWorkspacePath() {
+        guard let path = repository?.path else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(path, forType: .string)
+        showToast(l10n.copyWorkspacePath)
+    }
+
+    func revealSelectedWorkspace() {
+        guard let path = repository?.path else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+    }
+
+    func openSelectedWorkspaceInTerminal() {
+        guard let path = repository?.path else { return }
+        let terminal = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
+        NSWorkspace.shared.open(
+            [URL(fileURLWithPath: path)],
+            withApplicationAt: terminal,
+            configuration: NSWorkspace.OpenConfiguration(),
+            completionHandler: nil
+        )
+    }
+
+    func unlinkSelectedRepository() {
+        guard let selectedTaskID else { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                try await performStoreOperation { store in
+                    try store.unlinkRepository(taskID: selectedTaskID)
+                }
+                showToast(l10n.workspaceUnlinked)
+                refresh()
+            } catch {
+                showToast(l10n.workspaceUnlinkFailed)
+                message = "Workspace unlink error: \(error)"
             }
         }
     }
@@ -119,12 +187,12 @@ extension AppModel {
     }
 
     func relinkSelectedRepositoryBranch() {
-        guard let selectedTaskID, let repository else { return }
+        guard let selectedTaskID, repository != nil else { return }
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
                 try await performStoreOperation { store in
-                    try store.setRepository(taskID: selectedTaskID, path: repository.path)
+                    try store.refreshRepositoryAnchor(taskID: selectedTaskID)
                 }
                 showToast(l10n.branchLinked)
                 refresh()
@@ -140,21 +208,6 @@ extension AppModel {
         }
     }
 
-    func switchToSuggestedGitTask() {
-        guard let suggestion = gitSuggestion,
-            let task = tasks.first(where: { $0.id == suggestion.taskID })
-        else {
-            return
-        }
-        switchTo(task)
-        gitSuggestion = nil
-    }
-
-    func dismissGitSuggestion() {
-        dismissedGitSuggestionKey = gitSuggestion.map { "\($0.repositoryPath)|\($0.branch)|\($0.taskID)" }
-        gitSuggestion = nil
-    }
-
     func startGitMonitor() {
         guard gitMonitorTask == nil else { return }
         gitMonitorTask = Task { @MainActor [weak self] in
@@ -166,19 +219,15 @@ extension AppModel {
         }
     }
 
-    func updateGitSuggestion() {
-        refreshCurrentBranches()
-    }
-
     func refreshCurrentBranches() {
         gitRefreshTask?.cancel()
         let paths = Array(Set(taskRepositoriesByID.values.map(\.path))).sorted()
         guard !paths.isEmpty else {
-            currentBranchesByRepo = [:]
-            currentHeadsByRepo = [:]
-            dirtyStatesByRepo = [:]
-            workingTreeSignaturesByRepo = [:]
-            currentGitActivity = nil
+            if !currentBranchesByRepo.isEmpty { currentBranchesByRepo = [:] }
+            if !currentHeadsByRepo.isEmpty { currentHeadsByRepo = [:] }
+            if !dirtyStatesByRepo.isEmpty { dirtyStatesByRepo = [:] }
+            if !workingTreeSignaturesByRepo.isEmpty { workingTreeSignaturesByRepo = [:] }
+            if currentGitActivity != nil { currentGitActivity = nil }
             applyCachedGitState()
             return
         }
@@ -193,20 +242,26 @@ extension AppModel {
             let previousHeads = currentHeadsByRepo
             let previousDirtyStates = dirtyStatesByRepo
             let previousWorkingTreeSignatures = workingTreeSignaturesByRepo
-            currentBranchesByRepo = Dictionary(
+            let nextBranches = Dictionary(
                 uniqueKeysWithValues: states.map { ($0.path, $0.branch) }
             )
-            currentHeadsByRepo = Dictionary(
+            let nextHeads = Dictionary(
                 uniqueKeysWithValues: states.compactMap { state in
                     state.headSHA.map { (state.path, $0) }
                 }
             )
-            dirtyStatesByRepo = Dictionary(
+            let nextDirtyStates = Dictionary(
                 uniqueKeysWithValues: states.map { ($0.path, $0.dirtyState) }
             )
-            workingTreeSignaturesByRepo = Dictionary(
+            let nextWorkingTreeSignatures = Dictionary(
                 uniqueKeysWithValues: states.map { ($0.path, $0.workingTreeSignature ?? "unavailable") }
             )
+            if currentBranchesByRepo != nextBranches { currentBranchesByRepo = nextBranches }
+            if currentHeadsByRepo != nextHeads { currentHeadsByRepo = nextHeads }
+            if dirtyStatesByRepo != nextDirtyStates { dirtyStatesByRepo = nextDirtyStates }
+            if workingTreeSignaturesByRepo != nextWorkingTreeSignatures {
+                workingTreeSignaturesByRepo = nextWorkingTreeSignatures
+            }
             applyCachedGitState()
             let changedPaths = Set(
                 states.filter { state in
@@ -281,49 +336,19 @@ extension AppModel {
         return words.isEmpty ? URL(fileURLWithPath: workspace.path).lastPathComponent : words
     }
 
-    private func applyCachedGitState() {
+    func applyCachedGitState() {
         if let repository {
-            selectedRepoCurrentBranch = currentBranchesByRepo[repository.path] ?? "-"
-            selectedRepoDirtyState = dirtyStatesByRepo[repository.path] ?? .unknown
+            let branch = currentBranchesByRepo[repository.path] ?? "-"
+            let dirtyState = dirtyStatesByRepo[repository.path] ?? .unknown
+            if selectedRepoCurrentBranch != branch { selectedRepoCurrentBranch = branch }
+            if selectedRepoDirtyState != dirtyState { selectedRepoDirtyState = dirtyState }
         }
         if let assistantRepository {
-            assistantCurrentBranch = currentBranchesByRepo[assistantRepository.path] ?? "-"
-            assistantDirtyState = dirtyStatesByRepo[assistantRepository.path] ?? .unknown
+            let branch = currentBranchesByRepo[assistantRepository.path] ?? "-"
+            let dirtyState = dirtyStatesByRepo[assistantRepository.path] ?? .unknown
+            if assistantCurrentBranch != branch { assistantCurrentBranch = branch }
+            if assistantDirtyState != dirtyState { assistantDirtyState = dirtyState }
         }
 
-        let repositories = Array(taskRepositoriesByID.values)
-        guard !repositories.isEmpty else {
-            gitSuggestion = nil
-            return
-        }
-        let taskByID = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
-        for path in Set(repositories.map(\.path)).sorted() {
-            guard let currentBranch = currentBranchesByRepo[path],
-                currentBranch != "(unknown)"
-            else {
-                continue
-            }
-            let matches = repositories.filter { repo in
-                repo.path == path
-                    && repo.branch == currentBranch
-                    && repo.taskID != activeTaskID
-                    && repo.taskID != selectedTaskID
-            }
-            guard let match = matches.first, let task = taskByID[match.taskID] else {
-                continue
-            }
-            let key = "\(path)|\(currentBranch)|\(match.taskID)"
-            guard dismissedGitSuggestionKey != key else {
-                continue
-            }
-            gitSuggestion = GitBranchSuggestion(
-                taskID: match.taskID,
-                taskTitle: task.title,
-                repositoryPath: path,
-                branch: currentBranch
-            )
-            return
-        }
-        gitSuggestion = nil
     }
 }

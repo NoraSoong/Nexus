@@ -69,6 +69,9 @@ public struct TaskRepositoryRecord: Equatable, Sendable {
     public let taskID: String
     public var path: String
     public var branch: String
+    public var workspaceOrigin: WorkspaceOrigin
+    public var baseRef: String?
+    public var createdHeadSHA: String?
     public let anchorHeadSHA: String?
     public let anchorBranch: String?
     public let anchorCapturedAt: String?
@@ -78,6 +81,9 @@ public struct TaskRepositoryRecord: Equatable, Sendable {
         taskID: String,
         path: String,
         branch: String,
+        workspaceOrigin: WorkspaceOrigin = .external,
+        baseRef: String? = nil,
+        createdHeadSHA: String? = nil,
         anchorHeadSHA: String? = nil,
         anchorBranch: String? = nil,
         anchorCapturedAt: String? = nil,
@@ -86,10 +92,140 @@ public struct TaskRepositoryRecord: Equatable, Sendable {
         self.taskID = taskID
         self.path = path
         self.branch = branch
+        self.workspaceOrigin = workspaceOrigin
+        self.baseRef = baseRef
+        self.createdHeadSHA = createdHeadSHA
         self.anchorHeadSHA = anchorHeadSHA
         self.anchorBranch = anchorBranch
         self.anchorCapturedAt = anchorCapturedAt
         self.updatedAt = updatedAt
+    }
+}
+
+public enum WorkspaceOrigin: String, Codable, Equatable, Sendable {
+    case external
+    case nexusCreated = "nexus_created"
+}
+
+public struct WorkspaceProvisioningRequest: Equatable, Sendable {
+    public let taskID: String
+    public let repositoryRoot: String
+    public let baseRef: String
+    public let branchName: String
+    public let destinationPath: String
+    public let confirmedDirtyBase: Bool
+
+    public init(
+        taskID: String,
+        repositoryRoot: String,
+        baseRef: String,
+        branchName: String,
+        destinationPath: String,
+        confirmedDirtyBase: Bool = false
+    ) {
+        self.taskID = taskID
+        self.repositoryRoot = repositoryRoot
+        self.baseRef = baseRef
+        self.branchName = branchName
+        self.destinationPath = destinationPath
+        self.confirmedDirtyBase = confirmedDirtyBase
+    }
+}
+
+public struct WorkspaceProvisioningPreview: Equatable, Sendable {
+    public let repositoryRoot: String
+    public let baseRef: String
+    public let branchName: String
+    public let destinationPath: String
+    public let currentHeadSHA: String?
+    public let dirtyState: GitWorkingTreeState
+    public let warnings: [String]
+
+    public init(
+        repositoryRoot: String,
+        baseRef: String,
+        branchName: String,
+        destinationPath: String,
+        currentHeadSHA: String?,
+        dirtyState: GitWorkingTreeState,
+        warnings: [String] = []
+    ) {
+        self.repositoryRoot = repositoryRoot
+        self.baseRef = baseRef
+        self.branchName = branchName
+        self.destinationPath = destinationPath
+        self.currentHeadSHA = currentHeadSHA
+        self.dirtyState = dirtyState
+        self.warnings = warnings
+    }
+}
+
+public struct WorkspaceProvisioningResult: Equatable, Sendable {
+    public let taskID: String
+    public let workspace: GitWorkspaceInfo
+    public let branchName: String
+    public let baseRef: String
+    public let createdHeadSHA: String?
+
+    public init(
+        taskID: String,
+        workspace: GitWorkspaceInfo,
+        branchName: String,
+        baseRef: String,
+        createdHeadSHA: String?
+    ) {
+        self.taskID = taskID
+        self.workspace = workspace
+        self.branchName = branchName
+        self.baseRef = baseRef
+        self.createdHeadSHA = createdHeadSHA
+    }
+}
+
+public enum WorkspaceProvisioningError: LocalizedError, Equatable, Sendable {
+    case notGitRepository(String)
+    case taskNotFound(String)
+    case taskAlreadyLinked(String)
+    case baseRefUnavailable(String)
+    case invalidBranchName(String)
+    case branchAlreadyExists(String)
+    case branchAlreadyCheckedOut(String, String)
+    case destinationExists(String)
+    case destinationConflicts(String)
+    case dirtyBaseRequiresConfirmation(String)
+    case gitCommandFailed(command: String, detail: String)
+    case persistenceFailed(cleanupPath: String?, detail: String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .notGitRepository(let path):
+            return "Not a Git repository: \(path)"
+        case .taskNotFound(let taskID):
+            return "The work does not exist: \(taskID)"
+        case .taskAlreadyLinked(let taskID):
+            return "The work already has a code workspace: \(taskID)"
+        case .baseRefUnavailable(let ref):
+            return "The base branch is unavailable: \(ref)"
+        case .invalidBranchName(let branch):
+            return "Invalid branch name: \(branch)"
+        case .branchAlreadyExists(let branch):
+            return "The branch already exists: \(branch)"
+        case .branchAlreadyCheckedOut(let branch, let path):
+            return "The branch is already checked out at \(path): \(branch)"
+        case .destinationExists(let path):
+            return "The destination already exists: \(path)"
+        case .destinationConflicts(let path):
+            return "The destination conflicts with another workspace: \(path)"
+        case .dirtyBaseRequiresConfirmation(let path):
+            return "The base workspace has uncommitted changes: \(path)"
+        case .gitCommandFailed(let command, let detail):
+            return "Git command failed (\(command)): \(detail)"
+        case .persistenceFailed(let cleanupPath, let detail):
+            if let cleanupPath {
+                return "The worktree was created at \(cleanupPath), but Nexus could not save its binding: \(detail)"
+            }
+            return "Nexus could not save the workspace binding: \(detail)"
+        }
     }
 }
 

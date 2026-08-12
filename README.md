@@ -44,8 +44,8 @@ Model output is always a draft. It affects MCP only after explicit approval.
 - Work creation, editing, archive, restore, and delete flows;
 - local files and pasted text with per-material assistant visibility;
 - streamed UTF-8 and UTF-16 text extraction with per-source budgets and a 64 MiB hard safety limit;
-- DeepSeek and OpenAI preparation with provider-specific keys in macOS Keychain;
-- per-request short source citations (`S1`, `S2`, ...) that Nexus resolves back to immutable source IDs before saving;
+- DeepSeek and OpenAI preparation with provider-specific keys in macOS Keychain; DeepSeek supports Flash for everyday work and Pro for more complex material;
+- per-request short source citations (`S1`, `S2`, ...) are model-only metadata that Nexus resolves back to immutable source IDs before saving and never exposes to users or assistants;
 - one automatic compact retry when a model reaches its output limit;
 - source-backed objectives, scope, facts, constraints, acceptance criteria, assumptions, and questions;
 - Context Pack review, diff, approval, and source-change freshness;
@@ -56,7 +56,7 @@ Model output is always a draft. It affects MCP only after explicit approval.
 - read-only stdio MCP Helper with layered confirmed context, source freshness, workspace activity, and streamed paginated material reads;
 - no Nexus tools while the app is not running or assistant access is paused.
 
-Nexus does not run coding agents, decide implementation strategy, or automatically create, merge, or delete worktrees.
+Nexus does not run coding agents or decide implementation strategy. It never switches, merges, or deletes code automatically; after explicit confirmation, it can create a standard Git worktree and bind the new directory to the current Work.
 
 ## Requirements
 
@@ -104,7 +104,7 @@ Users do not configure a database path or environment variable. `NEXUS_HOME` exi
 
 1. Start Nexus and open its main window from the menu bar.
 2. Create a Work item with a title and one-sentence goal.
-3. Optionally associate a local Git checkout or existing worktree.
+3. Optionally choose an existing code directory, or let Nexus create an isolated one.
 4. Drop relevant files or add pasted text.
 5. Choose which materials assistants may read.
 6. Add an optional note when the materials do not capture recent progress or caveats.
@@ -143,7 +143,7 @@ codex mcp add nexus \
   -- "$HOME/Library/Application Support/Nexus/bin/nexus-mcp"
 ```
 
-Pin a client to an existing worktree:
+Pin a client to an existing code directory:
 
 ```bash
 codex mcp add nexus-worktree \
@@ -169,7 +169,13 @@ Legacy fine-grained tools remain for compatibility. Assistants should not call N
 - API keys are not stored in SQLite or exposed through MCP;
 - failed, cancelled, or unapproved drafts never change the current Context Pack;
 - empty, binary, invalidly encoded, unsupported, and oversized files are excluded with distinct reasons;
-- Git integration reads state, commit summaries, and budgeted change evidence but does not run `checkout`, `stash`, `reset`, or commit operations.
+- Git integration reads state, commit summaries, and budgeted change evidence. After explicit confirmation, Nexus may run one standard `git worktree add` to create an isolated code directory, but it never checks out, stashes, resets, commits, merges, or deletes user code.
+
+### Parallel code work in your preferred editor
+
+Parallel Work items in one Git repository need separate code directories. From a Work's code section, choose **Create Isolated Code Directory**, review the base branch, new branch, and destination, then confirm. Copy the resulting path and open each directory in a separate window of your preferred development tool, such as IDEA, VS Code, Xcode, Cursor, or a terminal. Nexus does not install an editor plugin or switch branches automatically.
+
+Archiving or deleting a Work does not delete a Nexus-created directory or Git branch. Unlinking only removes Nexus's binding; the code stays on disk.
 
 ## Documentation
 

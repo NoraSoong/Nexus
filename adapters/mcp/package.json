@@ -12,7 +12,8 @@
     "verify:stdio": "node tests/stdio-client.mjs",
     "verify:bindings": "node tests/workspace-binding-client.mjs",
     "verify:file-policy": "node tests/text-file-policy.mjs",
-    "verify:context-payload": "node tests/context-payload-policy.mjs"
+    "verify:context-payload": "node tests/context-payload-policy.mjs",
+    "verify:context-sanitizer": "node tests/context-payload-sanitizer.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0"
