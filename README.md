@@ -37,6 +37,12 @@ Nexus does not replace your coding assistant. The assistant explores and edits c
   <img src="docs/diagrams/core-loop.en.svg" alt="Nexus context loop" width="1100">
 </p>
 
+## See Nexus in Action
+
+<p align="center">
+  <img src="docs/images/nexus-current-context-en.png" alt="Nexus current context in English" width="1100">
+</p>
+
 Model output is always a draft. It changes the context exposed through MCP only after explicit user approval.
 
 ## Why Nexus
