@@ -29,6 +29,10 @@ HELPER_DIR="$NEXUS_HOME/helpers/$HELPER_VERSION"
 BIN_DIR="$NEXUS_HOME/bin"
 mkdir -p "$HELPER_DIR" "$BIN_DIR"
 
+printf -v QUOTED_NEXUS_HOME '%q' "$NEXUS_HOME"
+printf -v QUOTED_NODE_BIN '%q' "$NODE_BIN"
+printf -v QUOTED_HELPER_ENTRYPOINT '%q' "$HELPER_DIR/dist/index.js"
+
 rm -rf "$HELPER_DIR/dist"
 cp -R "$ROOT/adapters/mcp/dist" "$HELPER_DIR/dist"
 rm -rf "$HELPER_DIR/node_modules"
@@ -47,8 +51,11 @@ JSON
 cat > "$BIN_DIR/nexus-mcp" <<SH
 #!/usr/bin/env bash
 set -euo pipefail
-export NEXUS_HOME="\${NEXUS_HOME:-$NEXUS_HOME}"
-exec "$NODE_BIN" "$HELPER_DIR/dist/index.js" "\$@"
+if [[ -z "\${NEXUS_HOME:-}" ]]; then
+  NEXUS_HOME=$QUOTED_NEXUS_HOME
+fi
+export NEXUS_HOME
+exec $QUOTED_NODE_BIN $QUOTED_HELPER_ENTRYPOINT "\$@"
 SH
 chmod +x "$BIN_DIR/nexus-mcp"
 
