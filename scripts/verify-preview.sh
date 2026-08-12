@@ -8,6 +8,7 @@ HELPER_DIR="$APP_DIR/Contents/Resources/MCPHelper"
 
 [[ -d "$APP_DIR" ]]
 [[ -x "$APP_DIR/Contents/MacOS/NexusMac" ]]
+[[ -f "$APP_DIR/Contents/Resources/AppIcon.icns" ]]
 [[ -x "$HELPER_DIR/node" ]]
 [[ -f "$HELPER_DIR/dist/index.js" ]]
 [[ -f "$HELPER_DIR/manifest.json" ]]

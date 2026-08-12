@@ -48,10 +48,23 @@ APP_DIR="$OUTPUT_DIR/$APP_NAME"
 MACOS_DIR="$APP_DIR/Contents/MacOS"
 RESOURCES_DIR="$APP_DIR/Contents/Resources"
 HELPER_DIR="$RESOURCES_DIR/MCPHelper"
+ICONSET_DIR="$ROOT/.build/preview-appicon.iconset"
+ICON_PATH="$ROOT/.build/preview-AppIcon.icns"
+rm -rf "$ICONSET_DIR"
+mkdir -p "$ICONSET_DIR"
+for size in 16 32 128 256 512; do
+  double_size=$((size * 2))
+  sips -z "$size" "$size" "$ROOT/packaging/AppIcon-master.png" \
+    --out "$ICONSET_DIR/icon_${size}x${size}.png" >/dev/null
+  sips -z "$double_size" "$double_size" "$ROOT/packaging/AppIcon-master.png" \
+    --out "$ICONSET_DIR/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET_DIR" -o "$ICON_PATH"
 mkdir -p "$MACOS_DIR" "$HELPER_DIR/dist" "$HELPER_DIR/node_modules"
 
 cp "$SWIFT_BIN_DIR/NexusMac" "$MACOS_DIR/NexusMac"
 cp "$ROOT/packaging/Info.plist" "$APP_DIR/Contents/Info.plist"
+cp "$ICON_PATH" "$RESOURCES_DIR/AppIcon.icns"
 cp -R "$HELPER_BUILD_DIR/dist/." "$HELPER_DIR/dist/"
 cp -R "$HELPER_BUILD_DIR/node_modules/." "$HELPER_DIR/node_modules/"
 cp "$HELPER_BUILD_DIR/package.json" "$HELPER_DIR/package.json"
