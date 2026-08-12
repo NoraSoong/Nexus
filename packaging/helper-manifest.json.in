@@ -1,0 +1,8 @@
+{
+  "helperVersion": "0.1.0",
+  "nodeVersion": "v26.5.0",
+  "mcpSdkVersion": "1.30.0",
+  "projectionSchemaVersion": 2,
+  "runtimeMode": "bundled-node",
+  "entrypoint": "dist/index.js"
+}

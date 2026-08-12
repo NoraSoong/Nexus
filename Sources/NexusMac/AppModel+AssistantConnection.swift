@@ -4,6 +4,22 @@ import NexusCore
 
 @MainActor
 extension AppModel {
+    func installBundledHelperIfAvailable() async {
+        guard let resourceDirectory = Bundle.main.resourceURL?.appendingPathComponent("MCPHelper") else {
+            return
+        }
+        do {
+            _ = try await NexusBackgroundWork.run(priority: .utility) {
+                try BundledHelperInstaller.install(from: resourceDirectory)
+            }
+        } catch {
+            assistantConnectionReady = false
+            assistantConnectionStatus = l10n.helperMissing
+            assistantConnectionDetail = l10n.installHelperFirst
+            assistantConnectionDoctor = error.localizedDescription
+        }
+    }
+
     func copyContextSummary() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(contextSummaryText(), forType: .string)

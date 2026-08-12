@@ -11,7 +11,7 @@ Nexus is a local-first trusted work-context layer for coding assistants on macOS
 
 It turns requirements, API examples, SQL, logs, source files, and human notes into a concise, reviewable, source-backed **Context Pack**, then carries later code changes forward as separate evidence. Once approved, that context is available to coding assistants such as Codex and Claude through MCP without injecting every raw material by default.
 
-> Status: pre-alpha local prototype suitable for dogfooding. A production App Bundle, private Helper runtime, signing, notarization, and DMG are not complete yet.
+> Status: pre-alpha Apple Silicon Developer Preview. The preview DMG includes a private Node Runtime and MCP Helper, but it is not Developer ID signed or notarized.
 
 ## Why Nexus
 
@@ -60,7 +60,9 @@ Nexus does not run coding agents or decide implementation strategy. It never swi
 
 ## Requirements
 
-Current development baseline:
+For the Developer Preview, use an Apple Silicon Mac running macOS 14 or later. Node.js is bundled with the DMG and is not required for normal use.
+
+Source-development baseline:
 
 - macOS 14 or later;
 - Xcode 26.5 / Swift 6.3.2;
@@ -70,6 +72,17 @@ Current development baseline:
 The MCP Helper uses `node:sqlite`; it does not depend on the system SQLite CLI or a third-party native addon.
 
 ## Build and Run
+
+Build the Apple Silicon Developer Preview DMG:
+
+```bash
+scripts/build-preview.sh
+scripts/verify-preview.sh
+```
+
+The DMG is written to `dist/preview/`. The build downloads the pinned official Node Runtime, verifies its SHA-256 checksum, and embeds it in `Nexus.app`; the runtime is not committed to this repository.
+
+The preview is not Developer ID signed or notarized. macOS may require opening it from Finder with the usual local preview confirmation.
 
 Build and test Swift:
 
@@ -117,7 +130,9 @@ An approved Context Pack can be expanded in the main workspace to inspect its fu
 
 ## MCP Helper
 
-Install the development helper shim:
+When Nexus is installed from the Developer Preview DMG, the first app launch automatically installs the bundled Helper into the user's Nexus Application Support directory and creates the stable command path below. No Node.js installation or manual Helper script is required.
+
+For source development only, install the development helper shim:
 
 ```bash
 scripts/install-helper.sh
@@ -135,6 +150,8 @@ Check the Helper:
 "$HOME/Library/Application Support/Nexus/bin/nexus-mcp" --version
 "$HOME/Library/Application Support/Nexus/bin/nexus-mcp" --doctor
 ```
+
+`--doctor` reports the Helper version, MCP SDK version, private Node version, SQLite adapter, database, app runtime, and projection compatibility.
 
 Example Codex configuration:
 
@@ -181,6 +198,7 @@ Archiving or deleting a Work does not delete a Nexus-created directory or Git br
 
 - [Architecture](docs/architecture.md)
 - [Development guide](docs/development.md)
+- [Developer Preview release](docs/release.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 - [Assistant rules example](docs/agent-rules.md)

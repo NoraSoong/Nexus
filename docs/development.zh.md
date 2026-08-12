@@ -19,6 +19,8 @@
 
 MCP Helper 的依赖通过 `adapters/mcp/package-lock.json` 固定。Helper 不应使用浮动依赖版本。
 
+Apple Silicon Developer Preview 使用 `scripts/build-preview.sh` 构建。它会把固定版本的官方 Node Runtime 和 Helper 资源嵌入真实的 `Nexus.app`；`scripts/verify-preview.sh` 会检查 Bundle、Runtime、`node:sqlite`、DMG 和校验文件。预览版暂未签名或公证。
+
 ## 本地数据
 
 默认情况下，Nexus 会把产品数据保存到：
@@ -60,6 +62,13 @@ CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-cache" \
 cd adapters/mcp
 npm ci
 npm run build
+```
+
+构建预览包，且不会修改源码目录中已安装的开发依赖：
+
+```bash
+scripts/build-preview.sh
+scripts/verify-preview.sh
 ```
 
 ## 验证
