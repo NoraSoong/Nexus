@@ -1,6 +1,6 @@
 # Contributing to Nexus
 
-Nexus is a pre-alpha macOS developer tool. Small, focused contributions are easier to review and less likely to disturb the trust boundary around local context.
+Nexus is a validation-focused macOS Developer Preview. Small, focused contributions are easier to review and less likely to disturb the trust boundary around local context.
 
 This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
 
@@ -13,3 +13,11 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 5. Run the checks in the [development guide](docs/development.md).
 
 Issues and pull requests are welcome. For security-sensitive reports, use GitHub private reporting rather than a public issue.
+
+## Project Status
+
+The current public artifact is intended for local evaluation and dogfooding.
+Feature development may pause between validation rounds, so not every feature
+request will immediately become part of the next release. Reproducible bugs,
+focused documentation fixes, and changes that preserve the local-first trust
+boundary are the most useful contributions during this stage.

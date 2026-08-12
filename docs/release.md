@@ -6,6 +6,28 @@ The current preview targets Apple Silicon Macs running macOS 14 or later. The DM
 
 The preview is not Developer ID signed or notarized. It is intended for local evaluation and dogfooding, not unattended enterprise deployment.
 
+## Published Preview
+
+The current public release is
+[`v0.1.0-preview.1`](https://github.com/NoraSoong/Nexus/releases/tag/v0.1.0-preview.1).
+Download the Apple Silicon DMG from the release page and verify it with the
+included `SHA256SUMS` asset before opening it.
+
+## Install and Connect
+
+1. Open the DMG and drag `Nexus.app` to `Applications`.
+2. Launch Nexus once. The app installs its bundled Helper into the app-managed
+   Application Support directory and creates the stable MCP command.
+3. Open Assistant Connection in Nexus and use the displayed configuration for
+   the MCP client you use.
+4. Keep Nexus running in the menu bar while an assistant needs to read context;
+   pausing assistant access or quitting the app intentionally stops context
+   exposure.
+
+The app can be removed from `Applications` without deleting local Work data.
+Do not remove the Nexus Application Support directory unless you also intend
+to remove local context data and installed Helper versions.
+
 ## Build locally
 
 ```bash
