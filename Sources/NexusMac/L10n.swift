@@ -487,9 +487,9 @@ struct L10n {
     var openNexusToConnect: String { zh ? "打开 Nexus 以连接" : "Open Nexus to connect" }
     var connectionFailed: String { zh ? "连接失败" : "Connection failed" }
     var helperInstalledButNotReady: String { zh ? "本地连接组件已安装，但还没有准备好。" : "The helper is installed but not ready." }
-    var runtimeStatusMissing: String { zh ? "Nexus 还没有发布运行状态。" : "Nexus has not published a running status yet." }
+    var runtimeStatusMissing: String { zh ? "连接状态还没有准备好，请稍后重试。" : "The connection is not ready yet. Please try again shortly." }
     var assistantAccessPausedReason: String { zh ? "助手读取已暂停。" : "Assistant reading is paused." }
-    var heartbeatStale: String { zh ? "Nexus 运行状态已过期。" : "Nexus heartbeat is stale." }
+    var heartbeatStale: String { zh ? "Nexus 暂时没有响应，请重新打开后重试。" : "Nexus is not responding. Reopen it and try again." }
     var appNotRunning: String { zh ? "Nexus 没有运行。" : "Nexus is not running." }
     var appProcessNotAlive: String { zh ? "Nexus 进程已退出。" : "Nexus process is no longer alive." }
     var chooseGitRepository: String { zh ? "选择 Git 主目录或已有代码目录" : "Choose a Git checkout or existing code directory" }

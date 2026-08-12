@@ -44,6 +44,8 @@ final class BundledHelperInstallerTests: XCTestCase {
             FileManager.default.fileExists(atPath: first.helperDirectory.appendingPathComponent("dist/index.js").path))
         let shim = try String(contentsOf: first.stableShim, encoding: .utf8)
         XCTAssertTrue(shim.contains("NEXUS_HOME"))
+        XCTAssertTrue(shim.contains("NEXUS_HOME='/"))
+        XCTAssertFalse(shim.contains("NEXUS_HOME=\"${NEXUS_HOME:-'/"))
         XCTAssertTrue(shim.contains("node"))
     }
 }

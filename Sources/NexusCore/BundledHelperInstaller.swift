@@ -124,7 +124,10 @@ public enum BundledHelperInstaller {
         let script = """
             #!/bin/sh
             set -eu
-            export NEXUS_HOME="${NEXUS_HOME:-\(shellQuote(applicationSupportDirectory.path))}"
+            if [ -z "${NEXUS_HOME:-}" ]; then
+              NEXUS_HOME=\(shellQuote(applicationSupportDirectory.path))
+            fi
+            export NEXUS_HOME
             exec \(shellQuote(node.path)) \(shellQuote(entrypoint.path)) "$@"
             """
         try Data(script.utf8).write(to: url, options: [.atomic])

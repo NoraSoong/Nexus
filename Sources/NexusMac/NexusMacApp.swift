@@ -16,7 +16,7 @@ struct NexusApp: App {
                 .task { model.bootstrap() }
         }
 
-        WindowGroup("Nexus", id: "main") {
+        Window("Nexus", id: "main") {
             NexusMainView(model: model)
                 .background(WindowActivator())
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
