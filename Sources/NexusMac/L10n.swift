@@ -212,8 +212,9 @@ struct L10n {
     var textKind: String { zh ? "文本" : "Text" }
     var updatedPrefix: String { zh ? "更新" : "Updated" }
     var dropLocalFilesHere: String { zh ? "拖入本地文件" : "Drop local files here" }
-    var originalFilesStayOnDisk: String { zh ? "Nexus 只保留引用，不会删除原文件。" : "Original files stay on disk." }
-    var dropFiles: String { zh ? "拖入文件" : "Drop files" }
+    var filePickerHint: String { zh ? "点击选择或拖入，Nexus 只保留引用" : "Click to choose or drop; Nexus keeps a reference only" }
+    var dropFiles: String { zh ? "点击选择或拖入文件" : "Click to choose or drop files" }
+    var chooseFiles: String { zh ? "选择文件..." : "Choose Files..." }
     var snapshotSaved: String { zh ? "快照已保存" : "Snapshot saved" }
     var prepareCurrentWork: String { zh ? "整理当前工作" : "Prepare Current Work" }
     var contextPreparationTitle: String { zh ? "整理当前工作" : "Prepare Current Work" }
