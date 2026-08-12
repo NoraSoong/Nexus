@@ -39,11 +39,13 @@ struct NexusApp: App {
     }
 }
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var runtimeHeartbeatTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
+        installApplicationIcon()
         publishRuntimeHeartbeatFromDefaults()
         runtimeHeartbeatTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
             publishRuntimeHeartbeatFromDefaults()
@@ -54,5 +56,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         runtimeHeartbeatTimer?.invalidate()
         runtimeHeartbeatTimer = nil
         try? NexusRuntime.markAppStopped()
+    }
+
+    private func installApplicationIcon() {
+        guard let iconURL = Bundle.main.url(forResource: "Nexus", withExtension: "icns"),
+              let icon = NSImage(contentsOf: iconURL) else {
+            return
+        }
+        NSApp.applicationIconImage = icon
     }
 }

@@ -8,13 +8,15 @@ HELPER_DIR="$APP_DIR/Contents/Resources/MCPHelper"
 
 [[ -d "$APP_DIR" ]]
 [[ -x "$APP_DIR/Contents/MacOS/NexusMac" ]]
-[[ -f "$APP_DIR/Contents/Resources/AppIcon.icns" ]]
+[[ -f "$APP_DIR/Contents/Resources/Nexus.icns" ]]
 [[ -x "$HELPER_DIR/node" ]]
 [[ -f "$HELPER_DIR/dist/index.js" ]]
 [[ -f "$HELPER_DIR/manifest.json" ]]
 
 plutil -lint "$APP_DIR/Contents/Info.plist"
+[[ "$(plutil -extract CFBundleIconFile raw -o - "$APP_DIR/Contents/Info.plist")" == "Nexus.icns" ]]
 [[ "$(file -b "$APP_DIR/Contents/MacOS/NexusMac")" == *arm64* ]]
+[[ "$(file -b "$APP_DIR/Contents/Resources/Nexus.icns")" == *ic12* ]]
 [[ "$($HELPER_DIR/node --version)" == "v26.5.0" ]]
 [[ "$($HELPER_DIR/node -e "import('node:sqlite').then(() => process.stdout.write('ok'))")" == "ok" ]]
 "$HELPER_DIR/node" "$HELPER_DIR/dist/index.js" --version
