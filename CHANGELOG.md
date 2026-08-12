@@ -5,16 +5,20 @@ All notable changes to Nexus will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- English and Chinese interface preview screenshots for the public README
+
+### Changed
+- Clarified preview installation, MCP setup, supported platforms, and known limits
+
 ## [0.1.0-preview.1] - 2026-08-12
 
 ### Added
 - Apple Silicon Developer Preview DMG with a real `Nexus.app` bundle
 - Bundled Node.js 26.5.0 Runtime and MCP Helper with first-launch installation
 - Stable MCP shim, runtime diagnostics, and reproducible package verification
-
-## [Unreleased]
-
-### Added
 - Native SwiftUI Mac app with menu-bar entry and quick switching
 - Work creation, editing, archive, restore, and delete flows
 - Local file and pasted text materials with per-material assistant visibility

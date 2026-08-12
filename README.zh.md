@@ -23,7 +23,7 @@
   <img src="https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey.svg" alt="macOS 14 或更高版本">
 </p>
 
-> **当前状态：** pre-alpha Apple Silicon Developer Preview。预览版 DMG 已包含私有 Node.js Runtime 和 MCP Helper，但暂未进行 Developer ID 签名和公证。
+> **当前状态：** `v0.1.0-preview.1` Apple Silicon Developer Preview。预览版 DMG 已包含私有 Node.js Runtime 和 MCP Helper，但暂未进行 Developer ID 签名和公证。
 
 Nexus 帮助编码助手理解：**你正在做什么、哪些材料是依据、哪些内容仍不确定，以及代码工作区发生了什么变化**。
 
@@ -44,6 +44,20 @@ Nexus 不替代编码助手。助手负责探索和修改代码；Nexus 负责�
 </p>
 
 模型输出始终是草稿。只有用户明确采用后，Context Pack 才会成为当前 Work 的上下文并通过 MCP 暴露。
+
+## 当前状态
+
+最新公开构建为 `v0.1.0-preview.1`。这是用于本地体验和真实工作验证的
+Developer Preview，不是生产发行版。核心流程验证期间，功能开发可能在不同
+轮次之间暂时放缓；欢迎提交聚焦的 Bug、文档修正和可复现的使用反馈。
+
+当前预览版的限制：
+
+- 仅支持 Apple Silicon，系统要求 macOS 14 或更高版本；
+- App 暂未进行 Developer ID 签名和公证；
+- 整理功能需要用户自己的 OpenAI 或 DeepSeek API Key，不会复用 ChatGPT 或编码助手登录状态；
+- 材料整理需要用户明确选择，当前以文本材料为主，暂不包含 PDF、Word、深度网页采集和全仓库索引；
+- Nexus 不会自动切换分支、合并、推送、运行 Agent，也不会自动同步到团队服务。
 
 ## Nexus 解决什么问题
 
@@ -84,7 +98,8 @@ Nexus 不会自动切换、stash、reset、提交、合并、推送或删除用�
 - macOS 14 或更高版本；
 - 普通使用不需要单独安装 Node.js。
 
-当前预览版未进行 Developer ID 签名、公证或 Mac App Store 发布。首次打开时，macOS 可能会要求按系统提示确认运行本地预览应用。
+当前预览版未进行 Developer ID 签名、公证或 Mac App Store 发布。首次打开时，macOS
+可能会要求按系统提示确认运行本地预览应用。
 
 ## 快速体验
 

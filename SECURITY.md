@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Nexus is a pre-alpha project. Security fixes are made against the latest commit on `main`.
+Nexus is a Developer Preview. Security fixes are made against the latest commit on `main`.
 
 ## Reporting a Vulnerability
 

@@ -23,7 +23,7 @@
   <img src="https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey.svg" alt="macOS 14 or later">
 </p>
 
-> **Status:** pre-alpha Apple Silicon Developer Preview. The preview DMG includes a private Node.js Runtime and MCP Helper. It is not Developer ID signed or notarized.
+> **Status:** `v0.1.0-preview.1` Apple Silicon Developer Preview. The preview DMG includes a private Node.js Runtime and MCP Helper. It is not Developer ID signed or notarized.
 
 Nexus helps a coding assistant understand **what you are working on, which materials are authoritative, what remains uncertain, and what changed in the code workspace**.
 
@@ -44,6 +44,25 @@ Nexus does not replace your coding assistant. The assistant explores and edits c
 </p>
 
 Model output is always a draft. It changes the context exposed through MCP only after explicit user approval.
+
+## Current Status
+
+The latest public artifact is `v0.1.0-preview.1`. This is a validation-focused
+Developer Preview for local dogfooding, not a production release. Feature
+development may pause between validation rounds while the core workflow is
+being evaluated; focused bug reports, documentation fixes, and reproducible
+feedback are still welcome.
+
+Current preview limitations:
+
+- Apple Silicon only, with macOS 14 or later;
+- the app is not Developer ID signed or notarized;
+- model preparation requires your own OpenAI or DeepSeek API key and does not
+  reuse a ChatGPT or coding-assistant login;
+- material preparation is explicit and text-focused; PDF, Word, deep web
+  capture, and whole-repository indexing are not included;
+- Nexus does not automatically switch branches, merge, push, run agents, or
+  synchronize data to a team service.
 
 ## Why Nexus
 
@@ -82,7 +101,9 @@ Requirements:
 - macOS 14 or later;
 - no separate Node.js installation is required.
 
-The preview is unsigned and notarized neither by Developer ID nor by the Mac App Store. macOS may require the usual local-preview confirmation when opening it for the first time.
+The preview is not signed with Developer ID and is not notarized by Apple. macOS
+may require the usual local-preview confirmation when opening it for the first
+time.
 
 ## Try It
 
